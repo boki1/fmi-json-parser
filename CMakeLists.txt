@@ -1,19 +1,21 @@
 cmake_minimum_required(VERSION 3.22)
 project(fmi-json-parser)
 
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_subdirectory(lib)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_C_COMPILER gcc)
-set(CMAKE_CXX_COMPILER g++)
+option(FMI_JSON_PARSER_BUILD_WITH_MYSTD "Whether to build the project with mystd" "ON")
+add_subdirectory(mystd)
 
-option(FMI_JSON_PARSER_BUILD_APP "Whether to build console application." "yes")
-if("${FMI_JSON_PARSER_BUILD_APP}" STREQUAL "yes")
+option(FMI_JSON_PARSER_BUILD_APP "Whether to build console application." "ON")
+if("${FMI_JSON_PARSER_BUILD_APP}" STREQUAL "ON")
     add_subdirectory(app)
 endif()
 
-option(FMI_JSON_PARSER_BUILD_TESTS "Whether to build tests." "no")
-#if("${FMI_JSON_PARSER_BUILD_TESTS}" STREQUAL "yes")
-message("in tests")
+option(FMI_JSON_PARSER_BUILD_TESTS "Whether to build tests." "ON")
+if("${FMI_JSON_PARSER_BUILD_TESTS}" STREQUAL "ON")
+	include(cmake/conan.cmake)
     add_subdirectory(tests)
-#endif()
+endif()
