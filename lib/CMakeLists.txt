@@ -1,11 +1,10 @@
 add_library(json-parser
-		src/lexer.cpp
+		src/tokenizer.cpp
 		src/parser.cpp)
 target_compile_options(json-parser PUBLIC
-	-Wall -Wextra -Werror -std=gnu++2b)
+	-Wall -Wextra -Werror -std=c++20)
 target_include_directories(json-parser PUBLIC
-	include)
-
+	include/)
 target_link_libraries(json-parser PUBLIC
 		mystd)
 target_include_directories(json-parser PUBLIC

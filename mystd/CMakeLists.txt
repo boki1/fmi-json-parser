@@ -6,3 +6,7 @@ target_include_directories(mystd INTERFACE include/)
 if(FMI_JSON_PARSER_BUILD_WITH_MYSTD)
     target_compile_definitions(mystd INTERFACE FMI_JSON_PARSER_BUILD_WITH_MYSTD)
 endif()
+
+target_compile_options(mystd INTERFACE
+	-Wall -Wextra -Werror -std=c++20)
+

@@ -1,24 +1,24 @@
 # fmi-json-parser
 
+![JSON logo](http://www.logicum.co/wp-content/uploads/2013/10/JSON.png)
+
 **Description**
 
 Implement a JSON parser command line application. However I will implement a
 JSON parser library and a demo application which uses this library as an
-example as this seems way more natural to me :). In addition there are some tests
-in the corresponding directory.
+example as this seems way more natural to me :). These are contained in `lib/`
+and `app/` respectively. In addition there are some tests in the corresponding
+directory. In another addition, I am required to use only a certain part of the
+standard library as that is what is the OOP course @fmi is based upon which
+means that from time to time I will have to implement a certain type myself.
+Check the `mystd/` directory for them.
 
-_Note:_ By the task description I am very limited to the part of C++ that is used
-throughout the course - only things contained in <iostream>, <fstream>, <new>,
-<cstring>, <cmath>, <exception>, <stdexcept>, <string> and <vector>. Therefore on
-occassion, the implementation may be somewhat bad :/. I may fix it after that;
-we'll see.
+[_Problem description in bulgarian._](https://docs.google.com/document/d/1yGwTjf8gskWtwMzavdfM4g3cZAkf-ZNiJQaht1i083o/edit#heading=h.vros15jkdqoa)
 
 **Building**
 
 ```bash
-$ mkdir build
-$ cd build
-$ ccmake -S .. -B . -G Ninja
+$ ./build.sh --output=cmake-build-debug
 ```
 
 **License**
