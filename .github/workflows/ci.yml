@@ -1,0 +1,20 @@
+name: ci
+on:
+  push:
+jobs:
+  build-project:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        cxx: [clang++, g++-11]
+        cc: [clang, gcc-11]
+
+    steps:
+      - name: Build and test
+        uses: threeal/cmake-action@latest
+        with:
+          generator: Ninja
+          args: -DFMI_JSON_PARSER_BUILD_TESTS=ON -DFMI_JSON_PARSER_BUILD_APP=ON -DFMI_JSON_PARSER_BUILD_WITH_MYSTD=ON -DBUILD_TYPE=Release
+          run-test: true
