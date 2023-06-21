@@ -48,7 +48,6 @@ static std::string slurp_expected_output(const std::string &expected_output_file
 
 TEST(JsonTests, TokenizeSimple)
 {
-    // FIXME: Change to relative path!
     auto [actual, num_tokens] = tokenize_and_get_details("tests/samples/simple.json");
     auto expected = slurp_expected_output("tests/expected/simple.string");
 
@@ -58,7 +57,6 @@ TEST(JsonTests, TokenizeSimple)
 
 TEST(JsonTests, TokenizeJokes)
 {
-    // FIXME: Change to relative path!
     auto [actual, num_tokens] = tokenize_and_get_details("tests/samples/jokes.json");
     auto expected = slurp_expected_output("tests/expected/jokes.string");
 
@@ -68,7 +66,6 @@ TEST(JsonTests, TokenizeJokes)
 
 TEST(JsonTests, TokenizeNested)
 {
-    // FIXME: Change to relative path!
     auto [actual, num_tokens] = tokenize_and_get_details("tests/samples/nested.json");
     auto expected = slurp_expected_output("tests/expected/nested.string");
 
@@ -78,7 +75,6 @@ TEST(JsonTests, TokenizeNested)
 
 TEST(JsonTests, TokenizeEmpty)
 {
-    // FIXME: Change to relative path!
     auto [as_text, num_tokens] = tokenize_and_get_details("tests/samples/empty.json");
 
     EXPECT_EQ(num_tokens, 0);
@@ -87,6 +83,5 @@ TEST(JsonTests, TokenizeEmpty)
 
 TEST(JsonTests, TokenizeBadUnclosedString)
 {
-    // FIXME: Change to relative path!
     EXPECT_THROW(tokenize_and_get_details("tests/samples/bad_unclosed_string.json"), token_exception);
 }
