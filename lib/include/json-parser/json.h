@@ -53,6 +53,8 @@ public:
         virtual json::pmrvalue clone() const = 0;
     };
 
+    // TODO:
+    // Split into two - boolean and null.
     class keyword : public value {
     public:
         void serialize(std::ostream &os, std::size_t depth) const override;
@@ -61,6 +63,14 @@ public:
             : m_data{std::move(data)} {}
 
         json::pmrvalue clone() const override { return mystd::make_unique<keyword>(*this); }
+
+        // The json::keyword is implicitly convertible to bool.
+        // TODO: Well, actually no. json::keyword
+        // will soon be replaced by json::boolean when a different value type is introduced - json::null.
+        // So far the implementation if conversion to bool is wrong, but knowing what my future plan,
+        // it kind of makes sense :D.
+        keyword(bool data) : m_data{data ? token_keyword::kind::True : token_keyword::kind::False} {}
+        operator bool() const { return m_data.value() == token_keyword::kind::True; }
 
     private:
         token_keyword m_data;
@@ -74,6 +84,10 @@ public:
             : m_data{std::move(data)} {}
 
         json::pmrvalue clone() const override { return mystd::make_unique<number>(*this); }
+
+        // The json::number is implicitly convertible to double.
+        number(double data) : m_data{std::move(data)} {}
+        operator double() const { return m_data.value(); }
 
     private:
         token_number m_data;
@@ -91,7 +105,7 @@ public:
 
         bool operator==(const json::string &rhs) const { return m_data.value() == rhs.m_data.value(); }
         bool operator!=(const json::string &rhs) const { return !(*this == rhs); }
-
+\
         json::pmrvalue clone() const override { return mystd::make_unique<string>(*this); }
 
     public:
@@ -99,7 +113,8 @@ public:
 
         // The json::string is implicitly convertible to std::string, because
         // we want to support indexing JSON objects with string objects and literals.
-        string(std::string data) : m_data{std::move(data)} {}
+        string(const char *data) : m_data{std::string{data}} {}
+        string(const std::string& data) : m_data{std::move(data)} {}
         operator std::string() const { return m_data.value(); }
 
         explicit string(token_string data)

@@ -24,11 +24,11 @@ TEST(JsonTests, ParseSimple) {
     json parsed = parser{TESTS_DIR_PREFIX"tests/samples/simple.json"}();
 
     const json::string &fruit_val = dynamic_cast<const json::string &>(parsed["fruit"]);
-    EXPECT_EQ(fruit_val, std::string("Apple"));
+    EXPECT_EQ(fruit_val, "Apple");
     const json::string &size_val = dynamic_cast<const json::string &>(parsed["size"]);
-    EXPECT_EQ(size_val, std::string("Large"));
+    EXPECT_EQ(size_val, "Large");
     const json::string &color_val = dynamic_cast<const json::string &>(parsed["color"]);
-    EXPECT_EQ(color_val, std::string("Red"));
+    EXPECT_EQ(color_val, "Red");
 }
 
 TEST(JsonTests, ParseArray) {
