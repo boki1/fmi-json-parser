@@ -125,12 +125,11 @@ public:
         token_string m_data;
     };
 
-    template <typename DataType, typename IndexType>
+    template <typename DataType>
     class container_value : public value {
         friend json;
 
         using data_type = DataType;
-        using index_type = IndexType;
 
     public:
         void serialize(std::ostream &, std::size_t) const override { mystd::unreachable(); }
@@ -142,8 +141,15 @@ public:
         virtual ~container_value() noexcept = default;
 
     public:
-        [[nodiscard]] const value &at(index_type i) const {  return *(m_data.at(i).get()); }
-        [[nodiscard]] value &at(index_type i) { return *(m_data.at(i).get()); }
+        [[nodiscard]] json::value &operator[](auto &&i) {
+            auto &pmrval = m_data.at(std::forward<decltype(i)>(i));
+            return *pmrval;
+        }
+
+        [[nodiscard]] const json::value &operator[](auto &&i) const {
+            const auto &pmrval = m_data.at(std::forward<decltype(i)>(i));
+            return *pmrval;
+        }
 
         [[nodiscard]] typename data_type::const_iterator cbegin() const { return m_data.cbegin(); }
         [[nodiscard]] typename data_type::const_iterator cend() const { return m_data.cend(); }
@@ -159,8 +165,7 @@ public:
     };
 
     class object : public container_value<
-                       mystd::unordered_map<json::string, pmrvalue, json::string::hasher>,
-                       std::string>
+                       mystd::unordered_map<json::string, pmrvalue, json::string::hasher>>
     {
     public:
         void serialize(std::ostream &os, std::size_t depth) const override {
@@ -193,9 +198,7 @@ public:
         }
     };
 
-    class array : public container_value<
-                      std::vector<pmrvalue>,
-                      std::size_t>
+    class array : public container_value<std::vector<pmrvalue>>
     {
     public:
 
@@ -235,12 +238,12 @@ public:
     [[nodiscard]] const json::value &operator[](auto &&i) const {
         if constexpr (std::integral<std::decay_t<decltype(i)>>) {
             if (const auto *root_as_array = dynamic_cast<const json::array *>(m_root_node.get()); root_as_array)
-                return root_as_array->at(i);
+                return (*root_as_array)[i];
         }
 
         if constexpr (stringable<decltype(i)>) {
             if (const auto *root_as_object = dynamic_cast<const json::object *>(m_root_node.get()); root_as_object)
-                return root_as_object->at(std::forward<decltype(i)>(i));
+                return (*root_as_object)[std::forward<decltype(i)>(i)];
         }
 
         throw json_exception("Cannot index a non-container JSON type");
@@ -249,12 +252,12 @@ public:
     [[nodiscard]] json::value &operator[](auto &&i) {
         if constexpr (std::integral<decltype(i)>) {
             if (auto *root_as_array = dynamic_cast<json::array *>(m_root_node.get()); root_as_array)
-                return root_as_array->at(i);
+                return (*root_as_array)[i];
         }
 
         if constexpr (stringable<decltype(i)>) {
             if (auto *root_as_object = dynamic_cast<json::object *>(m_root_node.get()); root_as_object)
-                return root_as_object->at(std::forward<decltype(i)>(i));
+                return (*root_as_object)[std::forward<decltype(i)>(i)];
         }
 
         throw json_exception("Cannot index a non-container JSON type");
