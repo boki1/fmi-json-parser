@@ -36,3 +36,4 @@ build
 .cache
 .idea/
 cmake-build-debug/
+CMakeLists.txt.user
