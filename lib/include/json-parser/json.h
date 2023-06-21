@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <concepts>
+#include <stdexcept>
 
 #include <mystd/unordered_map.h>
 #include <mystd/memory.h>

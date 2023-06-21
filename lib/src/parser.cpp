@@ -25,8 +25,14 @@ void parser::parse_and_store() {
         return;
     }
 
-    auto root_node = parse_value();
-    m_parsed.emplace(json{std::move(root_node)});
+    try {
+        auto root_node = parse_value();
+        m_parsed.emplace(json{std::move(root_node)});
+    } catch (const token_exception &t) {
+        // The tokenizer is too low-level to be reasonable
+        // to report errors using its name :).
+        throw parser_exception(t.what());
+    }
 }
 
 json::pmrvalue parser::parse_object() {
