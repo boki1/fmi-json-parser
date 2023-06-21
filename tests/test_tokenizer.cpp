@@ -29,7 +29,7 @@ static tokenized_details tokenize_and_get_details(const std::string &json_input_
     auto end_it = tokenizer.end();
     for ( ; it != end_it; ++it) {
         mystd::unique_ptr<token> tok = *it;
-        tok->operator<<(sstr);
+        tok->serialize(sstr);
         ++num_tokens;
     }
 

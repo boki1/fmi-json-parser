@@ -1,19 +1,282 @@
 #ifndef FMI_JSON_PARSER_JSON_INCLUDED
 #define FMI_JSON_PARSER_JSON_INCLUDED
 
+#include <string>
+#include <vector>
+#include <iostream>
+#include <concepts>
+
+#include <mystd/unordered_map.h>
+#include <mystd/memory.h>
+#include <mystd/type_traits.h>
+#include <mystd/utility.h>
+
+#include <json-parser/tokenizer.h>
+
 namespace json_parser {
+
+// Used for the operator[] of a json::object.
+template<class T>
+concept stringable = std::is_convertible_v<T, std::string_view>;
+
+static_assert(stringable<std::string>);
+static_assert(stringable<char *>);
+static_assert(stringable<const char *>);
+
+class json_exception : public std::exception {
+public:
+    explicit json_exception(std::string msg)
+        : m_msg { std::move(msg) }
+    {
+    }
+
+    [[nodiscard]] const char* what() const noexcept { return m_msg.c_str(); }
+
+private:
+    std::string m_msg;
+};
 
 class json {
 
 public:
-  class value {};
+    ///
+    /// Types
+    ///
 
-  class object {};
+    class value;
+    using pmrvalue = mystd::unique_ptr<value>;
 
-  class array {};
+    class value {
+    public:
+        virtual ~value() noexcept {}
+        virtual void serialize(std::ostream &os, std::size_t depth) const = 0;
+        virtual json::pmrvalue clone() const = 0;
+    };
+
+    class keyword : public value {
+    public:
+        void serialize(std::ostream &os, std::size_t depth) const override;
+
+        explicit keyword(token_keyword data)
+            : m_data{std::move(data)} {}
+
+        json::pmrvalue clone() const override { return mystd::make_unique<keyword>(*this); }
+
+    private:
+        token_keyword m_data;
+    };
+
+    class number : public value {
+    public:
+        void serialize(std::ostream &os, std::size_t depth) const override;
+
+        explicit number(token_number data)
+            : m_data{std::move(data)} {}
+
+        json::pmrvalue clone() const override { return mystd::make_unique<number>(*this); }
+
+    private:
+        token_number m_data;
+    };
+
+    class string : public value {
+    public:
+        // json::string has to be hashable, because it is the
+        // key type of json::object's inner map container.
+        struct hasher {
+            size_t operator()(const json::string &s) const {
+                return std::hash<std::string>{}(s.m_data.value());
+            }
+        };
+
+        bool operator==(const json::string &rhs) const { return m_data.value() == rhs.m_data.value(); }
+        bool operator!=(const json::string &rhs) const { return !(*this == rhs); }
+
+        json::pmrvalue clone() const override { return mystd::make_unique<string>(*this); }
+
+    public:
+        void serialize(std::ostream &os, std::size_t depth) const override;
+
+        // The json::string is implicitly convertible to std::string, because
+        // we want to support indexing JSON objects with string objects and literals.
+        string(std::string data) : m_data{std::move(data)} {}
+        operator std::string() const { return m_data.value(); }
+
+        explicit string(token_string data)
+            : m_data{std::move(data)} {}
+
+    private:
+        token_string m_data;
+    };
+
+    template <typename DataType, typename IndexType>
+    class container_value : public value {
+        friend json;
+
+        using data_type = DataType;
+        using index_type = IndexType;
+
+    public:
+        void serialize(std::ostream &, std::size_t) const override { mystd::unreachable(); }
+        json::pmrvalue clone() const override { mystd::unreachable(); }
+
+        template <typename ...ItemType>
+        void append(ItemType&& ...) { mystd::unreachable(); }
+
+        virtual ~container_value() noexcept = default;
+
+    public:
+        [[nodiscard]] const value &at(index_type i) const {  return *(m_data.at(i).get()); }
+        [[nodiscard]] value &at(index_type i) { return *(m_data.at(i).get()); }
+
+        [[nodiscard]] typename data_type::const_iterator cbegin() const { return m_data.cbegin(); }
+        [[nodiscard]] typename data_type::const_iterator cend() const { return m_data.cend(); }
+
+        [[nodiscard]] typename data_type::iterator begin() { return m_data.begin(); }
+        [[nodiscard]] typename data_type::iterator end() { return m_data.end(); }
+
+        [[nodiscard]] std::size_t size() const noexcept { return m_data.size(); }
+        [[nodiscard]] std::size_t empty() const noexcept { return m_data.empty(); }
+
+    protected:
+        data_type m_data;
+    };
+
+    class object : public container_value<
+                       mystd::unordered_map<json::string, pmrvalue, json::string::hasher>,
+                       std::string>
+    {
+    public:
+        void serialize(std::ostream &os, std::size_t depth) const override {
+            os << std::string(depth, ' ') << "{";
+            size_t count = 0;
+            for (const auto &[str, val] : m_data){
+                str.serialize(os, depth + 2);
+                os << ": ";
+                val->serialize(os, depth + 2);
+                if (++count < m_data.size() - 1)
+                    os << ",\n";
+            }
+            os << std::string(depth, ' ') << "}";
+        }
+
+        template <typename ...ItemType>
+        void append(ItemType&& ...item_args) {
+            m_data.emplace(std::forward<ItemType>(item_args)...);
+        }
+
+        json::pmrvalue clone() const override {
+            auto cloned = mystd::make_unique<object>();
+            for (const auto &[key, val] : m_data){
+                auto cloned_key = key.clone();
+                json::string *cloned_key_ptr = dynamic_cast<json::string *>(cloned_key.get());
+                assert(cloned_key_ptr != nullptr);
+                cloned->append(std::move(*cloned_key_ptr), val->clone());
+            }
+            return cloned;
+        }
+    };
+
+    class array : public container_value<
+                      std::vector<pmrvalue>,
+                      std::size_t>
+    {
+    public:
+
+        void serialize(std::ostream &os, std::size_t depth) const override {
+            os << std::string(depth, ' ') << "[";
+            size_t count = 0;
+            for (const auto &val : m_data) {
+                val->serialize(os, depth + 2);
+                if (++count < m_data.size() - 1)
+                    os << ",\n";
+            }
+            os << std::string(depth, ' ') << "]";
+        }
+
+        template <typename ...ItemType>
+        void append(ItemType&& ...item_args) {
+            m_data.emplace_back(std::forward<ItemType>(item_args)...);
+        }
+
+        json::pmrvalue clone() const override {
+            auto cloned = std::make_unique<array>();
+            for (const auto &val : m_data)
+                cloned->append(val->clone());
+            return cloned;
+        }
+    };
+
+// DEBUG:
+    static_assert(std::is_default_constructible_v<json::array>);
+    static_assert(std::is_default_constructible_v<json::object>);
+
+public:
+    ///
+    /// Accessors
+    ///
+
+    [[nodiscard]] const json::value &operator[](auto &&i) const {
+        if constexpr (std::integral<std::decay_t<decltype(i)>>) {
+            if (const auto *root_as_array = dynamic_cast<const json::array *>(m_root_node.get()); root_as_array)
+                return root_as_array->at(i);
+        }
+
+        if constexpr (stringable<decltype(i)>) {
+            if (const auto *root_as_object = dynamic_cast<const json::object *>(m_root_node.get()); root_as_object)
+                return root_as_object->at(std::forward<decltype(i)>(i));
+        }
+
+        throw json_exception("Cannot index a non-container JSON type");
+    }
+
+    [[nodiscard]] json::value &operator[](auto &&i) {
+        if constexpr (std::integral<decltype(i)>) {
+            if (auto *root_as_array = dynamic_cast<json::array *>(m_root_node.get()); root_as_array)
+                return root_as_array->at(i);
+        }
+
+        if constexpr (stringable<decltype(i)>) {
+            if (auto *root_as_object = dynamic_cast<json::object *>(m_root_node.get()); root_as_object)
+                return root_as_object->at(std::forward<decltype(i)>(i));
+        }
+
+        throw json_exception("Cannot index a non-container JSON type");
+    }
+
+    const json::value * root() const noexcept { return m_root_node.get(); }
+    json::value *root() noexcept { return m_root_node.get(); }
+
+    const json::value &root_unsafe() const { return *(m_root_node.get()); }
+    json::value &root_unsafe() { return (*m_root_node.get()); }
+
+public:
+    ///
+    /// Special member functions
+    ///
+
+    json() = default;
+
+    json(const json &);
+    json& operator=(const json &);
+
+    json(json &&) noexcept = default;
+    json& operator=(json &&) noexcept = default;
+
+    explicit json(json::pmrvalue root_node)
+        : m_root_node{std::move(root_node)} {}
+
+    bool operator==(const json &) const noexcept;
+    bool operator!=(const json &rhs) const noexcept { return !(*this == rhs); }
+
+private:
+    json::pmrvalue m_root_node;
 };
 
-class json_builder {};
+template <typename NodeType, typename ...T>
+json::pmrvalue make_node(T&& ...args) {
+    return mystd::make_unique<NodeType>(mystd::forward<T>(args)...);
+}
 
 } // namespace json_parser
 

@@ -59,10 +59,7 @@ public:
 		: m_location { location }
 		, m_msg { std::move(msg) }
 	{
-	}
-
-	token_exception(const token_exception&) = default;
-	token_exception& operator=(const token_exception&) = default;
+    }
 
 	[[nodiscard]] const char* what() const noexcept { return m_msg.c_str(); }
 
@@ -73,7 +70,9 @@ private:
 
 struct token {
 	virtual ~token() noexcept = default;
-	virtual std::ostream& operator<<(std::ostream& os) const noexcept = 0;
+
+    virtual void serialize(std::ostream &os) const = 0;
+    virtual std::unique_ptr<token> clone() const noexcept = 0;
 };
 
 class token_string : public token {
@@ -81,13 +80,13 @@ public:
 	explicit token_string(const std::string& value)
 		: m_value { value }
 	{
-	}
-	token_string(const token_string&) = default;
-	token_string& operator=(const token_string&) = default;
+    }
 
 	[[nodiscard]] const std::string& value() const noexcept { return m_value; }
 
-	std::ostream& operator<<(std::ostream& os) const noexcept override;
+    void serialize(std::ostream &os) const override;
+
+    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_string>(*this); }
 
 private:
 	std::string m_value;
@@ -98,13 +97,13 @@ public:
 	explicit token_number(double value)
 		: m_value { value }
 	{
-	}
-	token_number(const token_number&) = default;
-	token_number& operator=(const token_number&) = default;
+    }
 
 	[[nodiscard]] double value() const noexcept { return m_value; }
 
-	std::ostream& operator<<(std::ostream& os) const noexcept override;
+    void serialize(std::ostream &os) const override;
+
+    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_number>(*this); }
 
 private:
 	double m_value;
@@ -112,23 +111,25 @@ private:
 
 class token_keyword : public token {
 public:
-	enum class keyword { True,
-		False,
-		Null };
+    enum class kind {
+        True,
+        False,
+        Null
+    };
 
-	explicit token_keyword(keyword value)
+    explicit token_keyword(kind value)
 		: m_value { value }
 	{
 	}
-	token_keyword(const token_keyword&) = default;
-	token_keyword& operator=(const token_keyword&) = default;
 
-	[[nodiscard]] keyword value() const noexcept { return m_value; }
+    [[nodiscard]] kind value() const noexcept { return m_value; }
 
-	std::ostream& operator<<(std::ostream& os) const noexcept override;
+    void serialize(std::ostream &os) const override;
+
+    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_keyword>(*this); }
 
 private:
-	keyword m_value;
+    kind m_value;
 };
 
 class token_punct : public token {
@@ -138,24 +139,15 @@ public:
 	{
 		// Safety: the token_punct ctor is called only with valid data!
 		assert(token_punct::is_valid(value));
-	}
-
-	token_punct(const token_punct&) = default;
-	token_punct& operator=(const token_punct&) = default;
+    }
 
 	[[nodiscard]] char value() const noexcept { return m_value; }
 
-	std::ostream& operator<<(std::ostream& os) const noexcept override;
+    void serialize(std::ostream& os) const override;
 
-	[[nodiscard]] static bool is_valid(char value)
-	{
-		static const char valid[] = "{}[]:,";
-		for (const char *pbegin = valid, *pend = valid + sizeof(valid);
-			 pbegin < pend; ++pbegin)
-			if (*pbegin == value)
-				return true;
-		return false;
-	}
+    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_punct>(*this); }
+
+    [[nodiscard]] static bool is_valid(char value);
 
 private:
 	char m_value;
@@ -167,32 +159,32 @@ mystd::unique_ptr<Kind> make_token(Value&& value)
 	return mystd::make_unique<Kind>(mystd::forward<Value>(value));
 }
 
+template <typename T>
+const T *token_as(const token *abstract_token) {
+    return dynamic_cast<const T *const>(abstract_token);
+}
+
+template <typename T>
+const T *token_as(const mystd::unique_ptr<token> &abstract_token) {
+    return dynamic_cast<const T *const>(abstract_token.get());
+}
+
 ///
 /// \brief The token_citerator class
-///
+/// \todo Abstract away the input stream type. Enable tokenizing strings.
 class token_citerator {
 	friend class tokenizer;
 
 public:
-	token_citerator(const std::string& input_filename, std::ios_base::seekdir input_seekdir)
-		: m_input_filename { input_filename }
-		, m_input { input_filename }
-		, m_current_location { m_input.seekg(0, input_seekdir).tellg() }
-	{
-		if (!m_input.is_open() || !m_input.good())
-			throw token_exception{"token_citerator: Cannot open file '" + m_input_filename + "'!"};
-	}
+    token_citerator(const std::string& input_filename, std::ios_base::seekdir input_seekdir);
 
-	token_citerator(const token_citerator& rhs)
-		: m_input_filename { rhs.m_input_filename }
-		, m_input { m_input_filename }
-		, m_current_location { rhs.m_current_location }
-	{
-		if (!m_input.is_open() || !m_input.good())
-			throw token_exception{"token_citerator: Cannot open file '" + m_input_filename + "'!"};
-	}
-
+    token_citerator(const token_citerator& rhs);
 	token_citerator& operator=(const token_citerator& rhs);
+
+    token_citerator(token_citerator&&) noexcept = default;
+    token_citerator& operator=(token_citerator&&) noexcept = default;
+
+    ~token_citerator() noexcept = default;
 
 	[[nodiscard]] bool operator==(const token_citerator& rhs) const;
 	[[nodiscard]] bool operator!=(const token_citerator& rhs) const;
@@ -208,6 +200,15 @@ public:
     // after the end, the an exception is thrown.
 	token_citerator& operator++();
 	token_citerator operator++(int);
+
+    [[nodiscard]] const token *peek_unsafe() {
+        if (!m_consumed_first){
+            consume_and_store();
+            m_consumed_first = true;
+        }
+
+        return m_consumed.get();
+    }
 
     // Rationale:
     // Changing the input filename would cause inconsistencies among
@@ -234,11 +235,17 @@ private:
 		DoUpdate };
 	char get(location_update_preference p = location_update_preference::DoUpdate);
 
-    bool has_more() const noexcept { return !m_input.eof(); }
-    void expect_has_more() const;
-
     void expect_symbol(char sym);
 	[[noreturn]] void unexpected_symbol(char sym);
+
+    template <typename T>
+    [[nodiscard]] token_exception token_exception_here(T&& msg) const {
+        return token_exception{std::forward<T>(msg), m_current_location};
+    }
+
+public:
+    bool has_more() const noexcept { return !m_input.eof(); }
+    void expect_has_more() const;
 
 private:
 	std::string m_input_filename;
@@ -253,10 +260,7 @@ public:
 	explicit tokenizer(const std::string& input_filename)
 		: m_input_filename { input_filename }
 	{
-	}
-
-	tokenizer(const tokenizer&) = default;
-	tokenizer& operator=(const tokenizer&) = default;
+    }
 
 	// There is not actual difference between the iteratos constructed on const
 	// and non-const tokenizer instances - they are both const.

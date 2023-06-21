@@ -2,10 +2,36 @@
 
 namespace json_parser {
 
+token_citerator::token_citerator(const std::string& input_filename, std::ios_base::seekdir input_seekdir)
+    : m_input_filename { input_filename }
+    , m_input { input_filename }
+    , m_current_location { m_input.seekg(0, input_seekdir).tellg() }
+{
+    if (!m_input.is_open() || !m_input.good())
+        throw token_exception{"token_citerator: Cannot open file '" + m_input_filename + "'!"};
+
+    if (input_seekdir == std::ios_base::end)
+        m_consumed_first = true;
+}
+
+token_citerator::token_citerator(const token_citerator& rhs)
+    : m_input_filename { rhs.m_input_filename }
+    , m_input { m_input_filename }
+    , m_current_location { rhs.m_current_location }
+    , m_consumed_first { rhs.m_consumed_first }
+    , m_consumed { rhs.m_consumed->clone() }
+{
+    if (!m_input.is_open() || !m_input.good())
+        throw token_exception{"token_citerator: Cannot open file '" + m_input_filename + "'!"};
+}
+
 token_citerator& token_citerator::operator=(const token_citerator& rhs)
 {
-	m_input_filename = rhs.m_input_filename;
+    m_input_filename = rhs.m_input_filename;
 	m_input = std::ifstream { rhs.m_input_filename };
+    m_consumed_first = rhs.m_consumed_first;
+    m_consumed = rhs.m_consumed->clone();
+    m_current_location = rhs.m_current_location;
 	return *this;
 }
 
@@ -23,7 +49,7 @@ token_citerator& token_citerator::operator=(const token_citerator& rhs)
     }
 
     if (!m_consumed)
-        throw token_exception("Trying to access consumed token!");
+        throw token_exception_here("Trying to access consumed token.");
 
     auto consumed = std::move(m_consumed);
     m_consumed.reset();
@@ -48,7 +74,7 @@ token_citerator token_citerator::operator++(int) {
 		sym = m_input.get();
 		m_current_location.stream_pos() = m_input.tellg();
 	} catch (std::ios::failure&) {
-		throw token_exception("Unexpected failure of input stream!", m_current_location);
+        throw token_exception_here("Unexpected failure of input stream.");
 	}
 	using enum location_update_preference;
 	if (update_preference == DoUpdate)
@@ -60,22 +86,22 @@ void token_citerator::expect_has_more() const
 {
     if (!has_more()) {
         std::string msg = m_current_location.to_string() + ": Trying to consume after end.";
-        throw token_exception { std::move(msg), m_current_location };
+        throw token_exception_here(std::move(msg));
     }
 }
 
 void token_citerator::expect_symbol(char sym)
 {
 	if (const char next_sym = get(); next_sym != sym) {
-		std::string msg = m_current_location.to_string() + ": Expected '" + sym + "' but got '" + next_sym + "' instead.";
-		throw token_exception { std::move(msg), m_current_location };
-	}
+        std::string msg = m_current_location.to_string() + ": Expected '" + sym + "' but got '" + next_sym + "' instead.";
+        throw token_exception_here(std::move(msg));
+    }
 }
 
 void token_citerator::unexpected_symbol(char sym)
 {
-	std::string msg = m_current_location.to_string() + ": Unexpected symbol '" + sym + "' found.";
-	throw token_exception { std::move(msg), m_current_location };
+    std::string msg = m_current_location.to_string() + ": Unexpected symbol '" + sym + "' found.";
+    throw token_exception_here(std::move(msg));
 }
 
 void token_citerator::consume_whitespace()
@@ -184,7 +210,7 @@ mystd::unique_ptr<token> token_citerator::consume_keyword()
     while (std::isalpha(peek()))
         value += get();
 
-    using enum token_keyword::keyword;
+    using enum token_keyword::kind;
     if (value == literal_true)
         return make_token<token_keyword>(True);
     if (value == literal_false)
@@ -205,33 +231,39 @@ token_citerator tokenizer::end() const
 	return token_citerator { m_input_filename, std::ios_base::end };
 }
 
-std::ostream& token_string::operator<<(std::ostream& os) const noexcept
+void token_string::serialize(std::ostream& os) const
 {
-	os << '"' << (m_value) << '"';
-	return os;
+    os << '"' << m_value << '"';
 }
 
-std::ostream& token_number::operator<<(std::ostream& os) const noexcept
+void token_number::serialize(std::ostream& os) const
 {
-	os << m_value;
-	return os;
+    os << m_value;
 }
 
-std::ostream& token_keyword::operator<<(std::ostream& os) const noexcept
+void token_keyword::serialize(std::ostream& os) const
 {
-	using enum keyword;
+    using enum kind;
 	switch (m_value) {
 		break; case True: os << "true";
 		break; case False: os << "false";
 		break; case Null: os << "null";
-	}
-	return os;
+    }
 }
 
-std::ostream& token_punct::operator<<(std::ostream& os) const noexcept
+void token_punct::serialize(std::ostream& os) const
 {
-	os << m_value;
-	return os;
+    os << m_value;
+}
+
+[[nodiscard]] bool token_punct::is_valid(char value)
+{
+    static const char valid[] = "{}[]:,";
+    for (const char *pbegin = valid, *pend = valid + sizeof(valid);
+         pbegin < pend; ++pbegin)
+        if (*pbegin == value)
+            return true;
+    return false;
 }
 
 }

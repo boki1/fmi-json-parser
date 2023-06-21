@@ -1,6 +1,7 @@
 add_library(json-parser
 		src/tokenizer.cpp
-		src/parser.cpp)
+		src/parser.cpp
+		src/json.cpp)
 target_compile_options(json-parser PUBLIC
 	-Wall -Wextra -Werror -std=c++20)
 target_include_directories(json-parser PUBLIC
