@@ -2,9 +2,7 @@
 
 #include <json-parser/parser.h>
 
-#ifndef TESTS_DIR_PREFIX
-#define TESTS_DIR_PREFIX ""
-#endif
+#include <json-parser-tests/common.h>
 
 using namespace json_parser;
 
@@ -13,7 +11,7 @@ using namespace json_parser;
 // const json::string val = parsed["fruit"];
 
 TEST(JsonTests, ParseStringOnly) {
-    json parsed = parser{TESTS_DIR_PREFIX"tests/samples/string-only.json"}();
+    json parsed = parser{TESTS_DIR_PREFIX"samples/string-only.json"}();
     EXPECT_NO_THROW(parsed.root_unsafe());
     const auto &root = parsed.root_unsafe();
     const auto root_as_str = dynamic_cast<const json::string &>(root);
@@ -21,7 +19,7 @@ TEST(JsonTests, ParseStringOnly) {
 }
 
 TEST(JsonTests, ParseSimple) {
-    json parsed = parser{TESTS_DIR_PREFIX"tests/samples/simple.json"}();
+    json parsed = parser{TESTS_DIR_PREFIX"samples/simple.json"}();
 
     const json::string &fruit_val = dynamic_cast<const json::string &>(parsed["fruit"]);
     EXPECT_EQ(fruit_val, "Apple");
@@ -32,7 +30,7 @@ TEST(JsonTests, ParseSimple) {
 }
 
 TEST(JsonTests, ParseArray) {
-    const json parsed = parser{TESTS_DIR_PREFIX"tests/samples/array.json"}();
+    const json parsed = parser{TESTS_DIR_PREFIX"samples/array.json"}();
 
     std::string expected = "";
     for (int i = 0; i < 10; ++i) {
@@ -43,7 +41,7 @@ TEST(JsonTests, ParseArray) {
 }
 
 TEST(JsonTests, ParseJokes) {
-    const json parsed = parser{TESTS_DIR_PREFIX"tests/samples/jokes.json"}();
+    const json parsed = parser{TESTS_DIR_PREFIX"samples/jokes.json"}();
 
     const json::number &amount_val = dynamic_cast<const json::number &>(parsed["amount"]);
     EXPECT_EQ(amount_val, 6.);
@@ -78,7 +76,7 @@ TEST(JsonTests, ParseJokes) {
 }
 
 TEST(JsonTests, ParseNested) {
-    const json parsed = parser{TESTS_DIR_PREFIX"tests/samples/nested.json"}();
+    const json parsed = parser{TESTS_DIR_PREFIX"samples/nested.json"}();
     const json::object &quiz = dynamic_cast<const json::object &>(parsed["quiz"]);
     const json::object &maths = dynamic_cast<const json::object &>(quiz["maths"]);
     const json::object &q2 = dynamic_cast<const json::object &>(maths["q2"]);
@@ -93,7 +91,7 @@ TEST(JsonTests, ParseNested) {
 }
 
 TEST(JsonTests, ParseEmpty) {
-    const json parsed = parser{TESTS_DIR_PREFIX"tests/samples/empty.json"}();
+    const json parsed = parser{TESTS_DIR_PREFIX"samples/empty.json"}();
     EXPECT_THROW((void) parsed["whatever-key-i-pass-this-should-fail-as-the-json-is-empty"], json_parser::json_exception);
 }
 
@@ -102,49 +100,49 @@ TEST(JsonTests, ParseEmpty) {
 ///
 
 TEST(JsonTests, ParseBadUnclosedString) {
-    parser p{TESTS_DIR_PREFIX"tests/samples/bad_unclosed_string.json"};
+    parser p{TESTS_DIR_PREFIX"samples/bad_unclosed_string.json"};
     EXPECT_THROW((void) p(), json_parser::parser_exception);
 }
 
 TEST(JsonTests, ParseBadExtraComma) {
-    parser p_object{TESTS_DIR_PREFIX"tests/samples/bad_extra_comma_object.json"};
+    parser p_object{TESTS_DIR_PREFIX"samples/bad_extra_comma_object.json"};
     // json_parser::parser_exception with description "Expected valid JSON value, but got an unexpected punctuator - '}'"
     EXPECT_THROW((void) p_object(), json_parser::parser_exception);
 
-    parser p_array{TESTS_DIR_PREFIX"tests/samples/bad_extra_comma_array.json"};
+    parser p_array{TESTS_DIR_PREFIX"samples/bad_extra_comma_array.json"};
     // json_parser::parser_exception with description "Expected valid JSON value, but got an unexpected punctuator - ']'"
     EXPECT_THROW((void) p_array(), json_parser::parser_exception);
 }
 
 // TODO: Improve error messages on this one:
 TEST(JsonTests, ParseBadMissingComma) {
-    parser p_object{TESTS_DIR_PREFIX"tests/samples/bad_missing_comma_object.json"};
+    parser p_object{TESTS_DIR_PREFIX"samples/bad_missing_comma_object.json"};
     // json_parser::parser_exception with description "Expected token of type `N11json_parser11token_punctE` but no such was found.
     EXPECT_THROW((void) p_object(), json_parser::parser_exception);
 
-    parser p_array{TESTS_DIR_PREFIX"tests/samples/bad_missing_comma_array.json"};
+    parser p_array{TESTS_DIR_PREFIX"samples/bad_missing_comma_array.json"};
     // json_parser::parser_exception with description "Expected token of type `N11json_parser11token_punctE` but no such was found.
     EXPECT_THROW((void) p_array(), json_parser::parser_exception);
 }
 
 TEST(JsonTests, ParseBadMissingColumn) {
-    parser p_object{TESTS_DIR_PREFIX"tests/samples/bad_missing_column.json"};
+    parser p_object{TESTS_DIR_PREFIX"samples/bad_missing_column.json"};
     // json_parser::parser_exception with description "Expected token of type `N11json_parser11token_punctE` but no such was found.
-    EXPECT_THROW((void) p_object(), json_parser::token_exception);
+    EXPECT_THROW((void) p_object(), json_parser::parser_exception);
 }
 
 TEST(JsonTests, ParseBadUnclosed) {
-    parser p_object{TESTS_DIR_PREFIX"tests/samples/bad_unclosed_object.json"};
+    parser p_object{TESTS_DIR_PREFIX"samples/bad_unclosed_object.json"};
     // json_parser::parser_exception with description "Expected more tokens during parsing."
     EXPECT_THROW((void) p_object(), json_parser::parser_exception);
 
-    parser p_array{TESTS_DIR_PREFIX"tests/samples/bad_unclosed_array.json"};
+    parser p_array{TESTS_DIR_PREFIX"samples/bad_unclosed_array.json"};
     // json_parser::parser_exception with description "Expected more tokens during parsing."
     EXPECT_THROW((void) p_array(), json_parser::parser_exception);
 }
 
 TEST(JsonTests, ParseBadUnexpectedSymbol) {
-    parser p1{TESTS_DIR_PREFIX"tests/samples/bad_unexpected_symbol.json"};
+    parser p1{TESTS_DIR_PREFIX"samples/bad_unexpected_symbol.json"};
     // json_parser::parser_exception with description "0:12 (12): Unexpected symbol '%' found."
-    EXPECT_THROW((void) p1(), json_parser::token_exception);
+    EXPECT_THROW((void) p1(), json_parser::parser_exception);
 }

@@ -8,13 +8,9 @@
 
 #include <json-parser/tokenizer.h>
 
+#include <json-parser-tests/common.h>
+
 using namespace json_parser;
-
-#ifndef TESTS_DIR_PREFIX
-#define TESTS_DIR_PREFIX ""
-#endif
-
-static constexpr std::string g_tests_dir_prefix = TESTS_DIR_PREFIX;
 
 struct tokenized_details {
     std::string as_text;
@@ -22,7 +18,7 @@ struct tokenized_details {
 };
 
 static tokenized_details tokenize_and_get_details(const std::string &json_input_filename) {
-    tokenizer tokenizer{g_tests_dir_prefix + json_input_filename};
+    tokenizer tokenizer{json_input_filename};
     std::size_t num_tokens = 0;
     std::ostringstream sstr;
     auto it = tokenizer.begin();
@@ -39,17 +35,10 @@ static tokenized_details tokenize_and_get_details(const std::string &json_input_
     };
 }
 
-static std::string slurp_expected_output(const std::string &expected_output_filename) {
-    // Seems not to be most efficient implementation but seems elegant to me.
-    // Source: https://stackoverflow.com/questions/116038/how-do-i-read-an-entire-file-into-a-stdstring-in-c#116220
-    std::ifstream in{g_tests_dir_prefix + expected_output_filename};
-    return std::string{std::istreambuf_iterator<char>{in}, {}};
-}
-
 TEST(JsonTests, TokenizeSimple)
 {
-    auto [actual, num_tokens] = tokenize_and_get_details("tests/samples/simple.json");
-    auto expected = slurp_expected_output("tests/expected/simple.string");
+    auto [actual, num_tokens] = tokenize_and_get_details(TESTS_DIR_PREFIX"samples/simple.json");
+    auto expected = slurp(TESTS_DIR_PREFIX"expected/simple.string");
 
     EXPECT_EQ(num_tokens, 13);
     EXPECT_EQ(actual, expected);
@@ -57,8 +46,8 @@ TEST(JsonTests, TokenizeSimple)
 
 TEST(JsonTests, TokenizeJokes)
 {
-    auto [actual, num_tokens] = tokenize_and_get_details("tests/samples/jokes.json");
-    auto expected = slurp_expected_output("tests/expected/jokes.string");
+    auto [actual, num_tokens] = tokenize_and_get_details(TESTS_DIR_PREFIX"samples/jokes.json");
+    auto expected = slurp(TESTS_DIR_PREFIX"expected/jokes.string");
 
     EXPECT_EQ(num_tokens, 357);
     EXPECT_EQ(actual, expected);
@@ -66,8 +55,8 @@ TEST(JsonTests, TokenizeJokes)
 
 TEST(JsonTests, TokenizeNested)
 {
-    auto [actual, num_tokens] = tokenize_and_get_details("tests/samples/nested.json");
-    auto expected = slurp_expected_output("tests/expected/nested.string");
+    auto [actual, num_tokens] = tokenize_and_get_details(TESTS_DIR_PREFIX"samples/nested.json");
+    auto expected = slurp(TESTS_DIR_PREFIX"expected/nested.string");
 
     EXPECT_EQ(num_tokens, 85);
     EXPECT_EQ(actual, expected);
@@ -75,7 +64,7 @@ TEST(JsonTests, TokenizeNested)
 
 TEST(JsonTests, TokenizeEmpty)
 {
-    auto [as_text, num_tokens] = tokenize_and_get_details("tests/samples/empty.json");
+    auto [as_text, num_tokens] = tokenize_and_get_details(TESTS_DIR_PREFIX"samples/empty.json");
 
     EXPECT_EQ(num_tokens, 0);
     EXPECT_EQ(as_text, "");
@@ -83,5 +72,5 @@ TEST(JsonTests, TokenizeEmpty)
 
 TEST(JsonTests, TokenizeBadUnclosedString)
 {
-    EXPECT_THROW(tokenize_and_get_details("tests/samples/bad_unclosed_string.json"), token_exception);
+    EXPECT_THROW(tokenize_and_get_details(TESTS_DIR_PREFIX"samples/bad_unclosed_string.json"), token_exception);
 }
