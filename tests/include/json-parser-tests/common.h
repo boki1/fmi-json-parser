@@ -34,13 +34,13 @@ std::string file_prefix(const std::string &sample_name) {
 //
 // Also this is the one used in the nlohman JSON test cases, so
 // I consider it to be a not-bad idea :D.
-std::pair<std::string, std::string> reprint(const std::string &sample_name) {
+std::pair<std::string, std::string> reprint(const std::string &file) {
     using namespace json_parser;
 
-    const std::string out_dir = TESTS_DIR_PREFIX"reprints/" + file_prefix(sample_name) + "/";
+    const std::string out_dir = TESTS_DIR_PREFIX"reprints/" + file_prefix(file) + "/";
     fs::create_directories(out_dir);
 
-    const json parsed1 = parser{sample_name}();
+    const json parsed1 = parser{file}();
     const std::string out1 = out_dir + "out1.json";
     std::ofstream out1_ifs{out1, std::ios::trunc | std::ios::out};
     parsed1.dump(out1_ifs);

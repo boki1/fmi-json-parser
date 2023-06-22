@@ -4,6 +4,7 @@ add_library(json-parser
 		src/json.cpp)
 target_compile_options(json-parser PUBLIC
 	-Wall -Wextra -Werror -std=c++20)
+    target_compile_options(json-parser PUBLIC -fsanitize=address)
 target_include_directories(json-parser PUBLIC
 	include/)
 target_link_libraries(json-parser PUBLIC
