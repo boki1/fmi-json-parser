@@ -16,7 +16,12 @@
 
 namespace json_parser {
 
-// Used for the operator[] of a json::object.
+///
+/// The `stringable` concept.
+/// It is satisfied by "string-like" types such as `std::string`,
+/// `char *` and `const char *`. It gets used for the operator[]
+/// of the `json::object` type.
+
 template<class T>
 concept stringable = std::is_convertible_v<T, std::string_view>;
 
@@ -24,6 +29,15 @@ static_assert(stringable<std::string>);
 static_assert(stringable<char *>);
 static_assert(stringable<const char *>);
 
+///
+/// The `json_exception` class.
+/// It is reponsible for reporting errors that happen when misusing
+/// `json` instances. Note that it is in no way a replacement of
+/// `parsed_exception` which is responsible for the parsing process's
+/// error reporting. The `json_exception` is used only _after_ the
+/// input stream has been parsed and there is an actual in-memory
+/// representation of a _valid_ JSON object.
+///
 class json_exception : public std::exception {
 public:
     explicit json_exception(std::string msg)
@@ -37,15 +51,30 @@ private:
     std::string m_msg;
 };
 
+///
+/// The `json` class.
+/// This is the main type used to represent a valid JSON object.
+/// An instance of it gets created using the parsing process by
+/// the `parser`.
+///
 class json {
 
     static constexpr inline size_t serialization_tab_size = 2;
 
 public:
     ///
-    /// Types
+    /// JSON Types.
     ///
 
+    ///
+    /// This is the base type used to represent a JSON value.
+    /// According to "json.org" each token that is found in a valid JSON
+    /// source is part of a value. There are multiple kinds of them:
+    /// the "trivial" ones - boolean, null, number and string, as well as
+    /// the "compound" ones - array and object. As `value` is useful in the
+    /// context of the type hierarchy it established, it usually gets used
+    /// as a "polymorphic" value in the form the alias `pmrvalue`.
+    ///
     class value;
     using pmrvalue = mystd::unique_ptr<value>;
 
@@ -54,9 +83,27 @@ public:
         virtual ~value() noexcept {}
         virtual void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const = 0;
         virtual json::pmrvalue clone() const = 0;
+        virtual bool trivial() const = 0;
+        virtual bool compound() const = 0;
     };
 
-    class boolean : public value {
+    ///
+    /// Trivial JSON types.
+    ///
+    /// These are not really interesting in terms of implementation. The only
+    /// notable difference between their corresponding tokens (in the `token`
+    /// hierarchy) is the separation of a "keyword" into `boolean` and `null`.
+    /// This was primarily done for ease of use in the end-used API as the
+    /// author of this library found out how ugly it is otherwise :D.
+    ///
+
+    class trivial_value : public value {
+    public:
+        bool trivial() const override { return true; }
+        bool compound() const override { return false; }
+    };
+
+    class boolean : public trivial_value {
     public:
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
@@ -72,7 +119,7 @@ public:
         token_keyword m_data;
     };
 
-    class null : public value {
+    class null : public trivial_value {
     public:
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
@@ -84,7 +131,7 @@ public:
         token_keyword m_data{token_keyword::kind::Null};
     };
 
-    class number : public value {
+    class number : public trivial_value {
     public:
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
@@ -101,7 +148,7 @@ public:
         token_number m_data;
     };
 
-    class string : public value {
+    class string : public trivial_value {
     public:
         // json::string has to be hashable, because it is the
         // key type of json::object's inner map container.
@@ -132,6 +179,15 @@ public:
         token_string m_data;
     };
 
+    ///
+    /// Compound JSON types.
+    ///
+    /// These are values which contain other values. Therefore as they have
+    /// similar properties I implemented them as derived classes of a
+    /// template `container_value`. This was not really mandatory but in my
+    /// opinion shortened the code, althouth I might have traded off for
+    /// readability because of the (someplace) weird generics used.
+
     template <typename DataType>
     class container_value : public value {
         friend json;
@@ -144,6 +200,9 @@ public:
 
         template <typename ...ItemType>
         void append(ItemType&& ...) { mystd::unreachable(); }
+
+        bool trivial() const override { return false; }
+        bool compound() const override { return true; }
 
         virtual ~container_value() noexcept = default;
 
@@ -241,6 +300,19 @@ public:
     ///
     /// Accessors
     ///
+    /// TODO: This is the most important future work I have in mind. However,
+    /// I am not really sure how to implement it :/. I want to make the operator[]
+    /// return _the most specific_ json::value derivation; e.g (in some pseudo-C++)
+    ///
+    /// json: { "Apple" : "123" }
+    /// decltype(json["Apple"]) == json::string
+    ///
+    /// This would allow for nice chaining of indexing operations:
+    /// json: { "Apple" : [ { "a" : 1, "b" : 2 }, { "A" : 1, "B" : 2 } ] }
+    /// json["Apple"][1]["B"] == 2
+    ///
+    /// As of now, dynamic casts are required in the end-user's code.
+    ///
 
     [[nodiscard]] const json::value &operator[](auto &&i) const {
         if constexpr (std::integral<std::decay_t<decltype(i)>>) {
@@ -270,12 +342,6 @@ public:
         throw json_exception("Cannot index a non-container JSON type");
     }
 
-    const json::value * root() const noexcept { return m_root_node.get(); }
-    json::value *root() noexcept { return m_root_node.get(); }
-
-    const json::value &root_unsafe() const { return *(m_root_node.get()); }
-    json::value &root_unsafe() { return (*m_root_node.get()); }
-
 public:
     ///
     /// Special member functions
@@ -301,9 +367,49 @@ public:
 
     void dump(std::ostream &os) const;
 
+    ///
+    /// Properties
+    ///
+
+    [[nodiscard]] const json::value *root() const noexcept {
+        return m_root_node.get();
+    }
+
+    [[nodiscard]] json::value *root() noexcept {
+        return m_root_node.get();
+    }
+
+    [[nodiscard]] const json::value &root_unsafe() const {
+        return *(m_root_node.get());
+    }
+
+    [[nodiscard]] json::value &root_unsafe() {
+        return (*m_root_node.get());
+    }
+
+    [[nodiscard]] bool compound() const {
+        if (m_root_node)
+            return m_root_node->compound();
+        return false;
+    }
+
+    [[nodiscard]] bool trivial() const {
+        if (m_root_node)
+            return m_root_node->trivial();
+        return false;
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return (bool) m_root_node;
+    }
+
 private:
     json::pmrvalue m_root_node;
 };
+
+///
+/// Helpers
+///
 
 template <typename NodeType, typename ...T>
 json::pmrvalue make_node(T&& ...args) {

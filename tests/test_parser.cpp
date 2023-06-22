@@ -21,7 +21,7 @@ static json parse_from_string(const std::string &filename) {
 
 TEST(JsonTests, ParseStringOnly) {
     json parsed = parse_from_file(TESTS_DIR_PREFIX"samples/string-only.json");
-    EXPECT_NO_THROW(parsed.root_unsafe());
+    EXPECT_NO_THROW((void) parsed.root_unsafe());
     const auto &root = parsed.root_unsafe();
     const auto root_as_str = dynamic_cast<const json::string &>(root);
     EXPECT_EQ(root_as_str, std::string{"blah-blah-blah"});
