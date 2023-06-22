@@ -8,7 +8,7 @@ token_citerator::token_citerator(const std::string& input_filename, std::ios_bas
     , m_current_location { m_input.seekg(0, input_seekdir).tellg() }
 {
     if (!m_input.is_open() || !m_input.good())
-        throw token_exception{"token_citerator: Cannot open file '" + m_input_filename + "'!"};
+        throw token_exception{"Cannot open file '" + m_input_filename + "'."};
 
     if (input_seekdir == std::ios_base::end)
         m_consumed_first = true;
@@ -22,7 +22,7 @@ token_citerator::token_citerator(const token_citerator& rhs)
     , m_consumed { rhs.m_consumed->clone() }
 {
     if (!m_input.is_open() || !m_input.good())
-        throw token_exception{"token_citerator: Cannot open file '" + m_input_filename + "'!"};
+        throw token_exception{"Cannot open file '" + m_input_filename + "'."};
 }
 
 token_citerator& token_citerator::operator=(const token_citerator& rhs)

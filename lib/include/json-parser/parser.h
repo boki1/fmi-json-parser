@@ -29,9 +29,11 @@ class parser {
 
 public:
     explicit parser(const std::string& filename)
-        : m_tokenizer{filename}
+        try : m_tokenizer{filename}
         , m_token_cit{m_tokenizer.begin()}
     {
+    } catch (const token_exception &te) {
+        throw parser_exception(te.what());
     }
 
     const json &parse() &;
