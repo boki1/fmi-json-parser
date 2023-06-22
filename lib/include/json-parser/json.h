@@ -39,6 +39,8 @@ private:
 
 class json {
 
+    static constexpr inline size_t serialization_tab_size = 2;
+
 public:
     ///
     /// Types
@@ -50,7 +52,7 @@ public:
     class value {
     public:
         virtual ~value() noexcept {}
-        virtual void serialize(std::ostream &os, std::size_t depth) const = 0;
+        virtual void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const = 0;
         virtual json::pmrvalue clone() const = 0;
     };
 
@@ -58,7 +60,7 @@ public:
     // Split into two - boolean and null.
     class keyword : public value {
     public:
-        void serialize(std::ostream &os, std::size_t depth) const override;
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
         explicit keyword(token_keyword data)
             : m_data{std::move(data)} {}
@@ -79,7 +81,7 @@ public:
 
     class number : public value {
     public:
-        void serialize(std::ostream &os, std::size_t depth) const override;
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
         explicit number(token_number data)
             : m_data{std::move(data)} {}
@@ -110,7 +112,7 @@ public:
         json::pmrvalue clone() const override { return mystd::make_unique<string>(*this); }
 
     public:
-        void serialize(std::ostream &os, std::size_t depth) const override;
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
         // The json::string is implicitly convertible to std::string, because
         // we want to support indexing JSON objects with string objects and literals.
@@ -132,7 +134,7 @@ public:
         using data_type = DataType;
 
     public:
-        void serialize(std::ostream &, std::size_t) const override { mystd::unreachable(); }
+        void serialize(std::ostream &, std::size_t, bool = false) const override { mystd::unreachable(); }
         json::pmrvalue clone() const override { mystd::unreachable(); }
 
         template <typename ...ItemType>
@@ -168,17 +170,19 @@ public:
                        mystd::unordered_map<json::string, pmrvalue, json::string::hasher>>
     {
     public:
-        void serialize(std::ostream &os, std::size_t depth) const override {
-            os << std::string(depth, ' ') << "{";
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override {
+            if (!in_object)
+                os << std::string(depth, ' ');
+            os << "{\n";
             size_t count = 0;
             for (const auto &[str, val] : m_data){
-                str.serialize(os, depth + 2);
-                os << ": ";
-                val->serialize(os, depth + 2);
-                if (++count < m_data.size() - 1)
+                str.serialize(os, depth + serialization_tab_size);
+                os << " : ";
+                val->serialize(os, depth + serialization_tab_size, true);
+                if (++count < m_data.size())
                     os << ",\n";
             }
-            os << std::string(depth, ' ') << "}";
+            os << "\n" << std::string(depth, ' ') << "}";
         }
 
         template <typename ...ItemType>
@@ -202,15 +206,17 @@ public:
     {
     public:
 
-        void serialize(std::ostream &os, std::size_t depth) const override {
-            os << std::string(depth, ' ') << "[";
+        void serialize(std::ostream &os, std::size_t depth, [[maybe_unused]] bool in_object = false) const override {
+            if (!in_object)
+                os << std::string(depth, ' ');
+            os << "[\n";
             size_t count = 0;
             for (const auto &val : m_data) {
-                val->serialize(os, depth + 2);
-                if (++count < m_data.size() - 1)
+                val->serialize(os, depth + serialization_tab_size);
+                if (++count < m_data.size())
                     os << ",\n";
             }
-            os << std::string(depth, ' ') << "]";
+            os << "\n" << std::string(depth, ' ') << "]";
         }
 
         template <typename ...ItemType>
@@ -287,6 +293,12 @@ public:
 
     bool operator==(const json &) const noexcept;
     bool operator!=(const json &rhs) const noexcept { return !(*this == rhs); }
+
+    ///
+    /// Operations
+    ///
+
+    void dump(std::ofstream &os) const;
 
 private:
     json::pmrvalue m_root_node;

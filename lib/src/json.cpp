@@ -26,18 +26,26 @@ bool json::operator==(const json &) const noexcept {
 /// Serialization
 ///
 
-void json::number::serialize(std::ostream &os, std::size_t depth) const {
-    os << std::string(depth, ' ');
+void json::dump(std::ofstream &os) const {
+    if (m_root_node)
+        m_root_node->serialize(os, /* depth */ 0);
+}
+
+void json::number::serialize(std::ostream &os, std::size_t depth, bool in_object) const {
+    if (!in_object)
+        os << std::string(depth, ' ');
     m_data.serialize(os);
 }
 
-void json::string::serialize(std::ostream &os, std::size_t depth) const {
-    os << std::string(depth, ' ');
+void json::string::serialize(std::ostream &os, std::size_t depth, bool in_object) const {
+    if (!in_object)
+        os << std::string(depth, ' ');
     m_data.serialize(os);
 }
 
-void json::keyword::serialize(std::ostream &os, std::size_t depth) const {
-    os << std::string(depth, ' ');
+void json::keyword::serialize(std::ostream &os, std::size_t depth, bool in_object) const {
+    if (!in_object)
+        os << std::string(depth, ' ');
     m_data.serialize(os);
 }
 
