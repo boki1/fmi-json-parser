@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <assert.h>
 #include <exception>
 
 namespace json_parser {
@@ -73,14 +74,14 @@ public:
         : m_ifs_filename{ifs_filename}
         , m_ifs{ifs_filename} {
         if (!ready())
-            throw input_reader_exception{"Cannot open input of type `ifs_input_reader`."};
+            throw input_reader_exception{"Cannot open input '" + m_ifs_filename + "'of type `ifs_input_reader`."};
     }
 
     ifs_input_reader(const ifs_input_reader &rhs)
         : m_ifs_filename{rhs.m_ifs_filename}
         , m_ifs{rhs.m_ifs_filename} {
         if (!ready())
-            throw input_reader_exception{"Cannot open input of type `ifs_input_reader`."};
+            throw input_reader_exception{"Cannot open input '" + m_ifs_filename + "'of type `ifs_input_reader`."};
     }
 
     ifs_input_reader& operator=(const ifs_input_reader &rhs) {
@@ -95,13 +96,13 @@ public:
 
     [[nodiscard]] ifs_input_reader begin() const override {
         ifs_input_reader copy { *this };
-        copy.m_ifs.seekg(0, std::ios_base::end);
+        copy.m_ifs.seekg(0, std::ios_base::beg);
         return copy;
     }
 
     [[nodiscard]] ifs_input_reader end() const override {
         ifs_input_reader copy { *this };
-        copy.m_ifs.seekg(0, std::ios_base::beg);
+        copy.m_ifs.seekg(0, std::ios_base::end);
         return copy;
     }
 
@@ -113,8 +114,9 @@ public:
 
     [[nodiscard]] char get() override { return m_ifs.get(); }
 
-    void seek(pos_type pos) { m_ifs.seekg(pos, std::ios_base::beg); }
-    [[nodiscard]] pos_type tell() const { return m_ifs.tellg(); }
+    void seek(pos_type pos) override { m_ifs.seekg(pos, std::ios_base::beg); }
+
+    [[nodiscard]] pos_type tell() const override { return m_ifs.tellg(); }
 
     using impl_type = std::ifstream;
     [[nodiscard]] const impl_type &ifs() const { return m_ifs; }
@@ -180,9 +182,9 @@ public:
         throw input_reader_exception("Trying to get from str_input_reader out of bounds.");
     }
 
-    void seek(pos_type pos) { m_pos = pos; }
+    void seek(pos_type pos) override { m_pos = pos; }
 
-    [[nodiscard]] pos_type tell() const { return m_pos; }
+    [[nodiscard]] pos_type tell() const override { return m_pos; }
 
     [[nodiscard]] static const std::string &kind() noexcept {
         static std::string kind = "str_input_reader";

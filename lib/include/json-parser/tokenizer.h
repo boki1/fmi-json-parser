@@ -235,7 +235,7 @@ public:
 
     explicit token_citerator(const input_reader_type& ir)
         try : m_input_reader { ir }
-            , m_current_location { m_input_reader.tell() }
+            , m_current_location { ir.tell() }
     {
         // Safety: This is guaranteed by the input reader strategies ctors.
         assert(m_input_reader.ready());
