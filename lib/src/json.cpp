@@ -26,7 +26,7 @@ bool json::operator==(const json &) const noexcept {
 /// Serialization
 ///
 
-void json::dump(std::ofstream &os) const {
+void json::dump(std::ostream &os) const {
     if (m_root_node)
         m_root_node->serialize(os, /* depth */ 0);
 }

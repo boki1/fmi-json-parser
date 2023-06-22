@@ -298,7 +298,7 @@ public:
     /// Operations
     ///
 
-    void dump(std::ofstream &os) const;
+    void dump(std::ostream &os) const;
 
 private:
     json::pmrvalue m_root_node;
