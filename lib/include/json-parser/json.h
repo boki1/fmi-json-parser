@@ -237,10 +237,6 @@ public:
         }
     };
 
-// DEBUG:
-    static_assert(std::is_default_constructible_v<json::array>);
-    static_assert(std::is_default_constructible_v<json::object>);
-
 public:
     ///
     /// Accessors
