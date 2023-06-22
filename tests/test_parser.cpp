@@ -14,6 +14,11 @@ static json parse_from_file(const std::string &filename) {
     return ifs_parser{ifs_input_reader{filename}}();
 }
 
+static json parse_from_string(const std::string &filename) {
+    std::string contents = slurp(filename);
+    return str_parser{str_input_reader{contents}}();
+}
+
 TEST(JsonTests, ParseStringOnly) {
     json parsed = parse_from_file(TESTS_DIR_PREFIX"samples/string-only.json");
     EXPECT_NO_THROW(parsed.root_unsafe());
@@ -97,6 +102,36 @@ TEST(JsonTests, ParseNested) {
 TEST(JsonTests, ParseEmpty) {
     const json parsed = parse_from_file(TESTS_DIR_PREFIX"samples/empty.json");
     EXPECT_THROW((void) parsed["whatever-key-i-pass-this-should-fail-as-the-json-is-empty"], json_parser::json_exception);
+}
+
+///
+/// str_input_reader
+///
+
+TEST(JsonTests, ParseSimpleStrInputReader) {
+    json parsed = parse_from_string(TESTS_DIR_PREFIX"samples/simple.json");
+
+    const json::string &fruit_val = dynamic_cast<const json::string &>(parsed["fruit"]);
+    EXPECT_EQ(fruit_val, "Apple");
+    const json::string &size_val = dynamic_cast<const json::string &>(parsed["size"]);
+    EXPECT_EQ(size_val, "Large");
+    const json::string &color_val = dynamic_cast<const json::string &>(parsed["color"]);
+    EXPECT_EQ(color_val, "Red");
+}
+
+TEST(JsonTests, ParseNestedStrInputReader) {
+    const json parsed = parse_from_string(TESTS_DIR_PREFIX"samples/nested.json");
+    const json::object &quiz = dynamic_cast<const json::object &>(parsed["quiz"]);
+    const json::object &maths = dynamic_cast<const json::object &>(quiz["maths"]);
+    const json::object &q2 = dynamic_cast<const json::object &>(maths["q2"]);
+    const json::array &q2_options = dynamic_cast<const json::array &>(q2["options"]);
+    const json::string &q2_question = dynamic_cast<const json::string &>(q2["question"]);
+    const json::string &q2_answer = dynamic_cast<const json::string &>(q2["answer"]);
+    const json::string &q2_option_2 = dynamic_cast<const json::string &>(q2_options[2]);
+
+    EXPECT_EQ(std::string{ q2_question }, "12 - 8 = ?");
+    EXPECT_EQ(std::string{ q2_answer }, "4");
+    EXPECT_EQ(std::string { q2_option_2 }, "3");
 }
 
 ///
