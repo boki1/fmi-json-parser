@@ -48,8 +48,11 @@ bool open_cmd(editor &ed) {
 
     std::string filename;
     ed.in() >> filename;
-    ed.draft() = json_parser::parser{filename}();
+
+    json_parser::ifs_input_reader ifs_input{filename};
+    ed.draft() = json_parser::ifs_parser{std::move(ifs_input)}();
     ed.set_draft_origin(filename);
+
     ed.out() << "File '" + filename + "' parsed successfully\n";
     return false;
 }

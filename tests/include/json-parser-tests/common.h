@@ -40,12 +40,12 @@ std::pair<std::string, std::string> reprint(const std::string &sample_name) {
     const std::string out_dir = TESTS_DIR_PREFIX"reprints/" + file_prefix(sample_name) + "/";
     fs::create_directories(out_dir);
 
-    const json parsed1 = parser{sample_name}();
+    const json parsed1 = ifs_parser{ifs_input_reader{sample_name}}();
     const std::string out1 = out_dir + "out1.json";
     std::ofstream out1_ifs{out1, std::ios::trunc | std::ios::out};
     parsed1.dump(out1_ifs);
 
-    const json parsed2 = parser{out1}();
+    const json parsed2 = ifs_parser{ifs_input_reader{out1}}();
     const std::string out2 = out_dir + "out2.json";
     std::ofstream out2_ifs{out2, std::ios::trunc | std::ios::out};
     parsed1.dump(out2_ifs);

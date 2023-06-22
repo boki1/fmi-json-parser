@@ -18,7 +18,7 @@ struct tokenized_details {
 };
 
 static tokenized_details tokenize_and_get_details(const std::string &json_input_filename) {
-    tokenizer tokenizer{json_input_filename};
+    ifs_tokenizer tokenizer{ifs_input_reader{json_input_filename}};
     std::size_t num_tokens = 0;
     std::ostringstream sstr;
     auto it = tokenizer.begin();
