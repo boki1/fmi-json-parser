@@ -51,7 +51,7 @@ TEST(JsonTests, ParseJokes) {
     const json::string &joke_no4_setup = dynamic_cast<const json::string &>(joke_no4["setup"]);
     const json::string &joke_no4_delivery = dynamic_cast<const json::string &>(joke_no4["delivery"]);
     const json::object &joke_no4_flags = dynamic_cast<const json::object &>(joke_no4["flags"]);
-    const json::keyword &joke_no4_flags_religious = dynamic_cast<const json::keyword &>(joke_no4_flags["religious"]);
+    const json::boolean &joke_no4_flags_religious = dynamic_cast<const json::boolean &>(joke_no4_flags["religious"]);
 
     EXPECT_EQ(std::string{joke_no4_setup}, "Why did the koala get rejected?");
     EXPECT_EQ(std::string{joke_no4_delivery}, "Because he did not have any koalafication.");

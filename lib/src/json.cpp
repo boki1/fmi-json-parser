@@ -43,7 +43,13 @@ void json::string::serialize(std::ostream &os, std::size_t depth, bool in_object
     m_data.serialize(os);
 }
 
-void json::keyword::serialize(std::ostream &os, std::size_t depth, bool in_object) const {
+void json::boolean::serialize(std::ostream &os, std::size_t depth, bool in_object) const {
+    if (!in_object)
+        os << std::string(depth, ' ');
+    m_data.serialize(os);
+}
+
+void json::null::serialize(std::ostream &os, std::size_t depth, bool in_object) const {
     if (!in_object)
         os << std::string(depth, ' ');
     m_data.serialize(os);

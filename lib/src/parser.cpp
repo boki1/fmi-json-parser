@@ -126,8 +126,12 @@ json::pmrvalue parser::parse_value() {
         next_node = make_node<json::string>(*str);
     else if (auto *num = token_as<token_number>(next_tok_ptr); num != nullptr)
         next_node = make_node<json::number>(*num);
-    else if (auto *kw = token_as<token_keyword>(next_tok_ptr); kw != nullptr)
-        next_node = make_node<json::keyword>(*kw);
+    else if (auto *kw = token_as<token_keyword>(next_tok_ptr); kw != nullptr){
+        if (kw->value() == token_keyword::kind::Null)
+            next_node = make_node<json::null>();
+        else
+            next_node = make_node<json::boolean>(*kw);
+    }
 
     if (next_node) {
         ++m_token_cit;

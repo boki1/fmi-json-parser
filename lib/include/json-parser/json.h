@@ -56,27 +56,32 @@ public:
         virtual json::pmrvalue clone() const = 0;
     };
 
-    // TODO:
-    // Split into two - boolean and null.
-    class keyword : public value {
+    class boolean : public value {
     public:
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
-        explicit keyword(token_keyword data)
+        explicit boolean(token_keyword data)
             : m_data{std::move(data)} {}
 
-        json::pmrvalue clone() const override { return mystd::make_unique<keyword>(*this); }
+        json::pmrvalue clone() const override { return mystd::make_unique<boolean>(*this); }
 
-        // The json::keyword is implicitly convertible to bool.
-        // TODO: Well, actually no. json::keyword
-        // will soon be replaced by json::boolean when a different value type is introduced - json::null.
-        // So far the implementation if conversion to bool is wrong, but knowing what my future plan,
-        // it kind of makes sense :D.
-        keyword(bool data) : m_data{data ? token_keyword::kind::True : token_keyword::kind::False} {}
+        boolean(bool data) : m_data{data ? token_keyword::kind::True : token_keyword::kind::False} {}
         operator bool() const { return m_data.value() == token_keyword::kind::True; }
 
     private:
         token_keyword m_data;
+    };
+
+    class null : public value {
+    public:
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
+
+        json::pmrvalue clone() const override { return mystd::make_unique<null>(*this); }
+
+        operator bool() const { return false; }
+
+    private:
+        token_keyword m_data{token_keyword::kind::Null};
     };
 
     class number : public value {
