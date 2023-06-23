@@ -354,6 +354,12 @@ public:
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override {
             if (!in_object)
                 os << std::string(depth, ' ');
+
+            if (m_data.empty()) {
+                os << "{ }\n";
+                return;
+            }
+
             os << "{\n";
             size_t count = 0;
             for (const auto &[str, val] : m_data){
@@ -402,6 +408,12 @@ public:
         void serialize(std::ostream &os, std::size_t depth, [[maybe_unused]] bool in_object = false) const override {
             if (!in_object)
                 os << std::string(depth, ' ');
+
+            if (m_data.empty()) {
+                os << "[ ]\n";
+                return;
+            }
+
             os << "[\n";
             size_t count = 0;
             for (const auto &val : m_data) {
