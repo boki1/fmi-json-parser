@@ -112,6 +112,7 @@ private:
 struct token {
 	virtual ~token() noexcept = default;
 
+    /// Same as in the `json::value` hierarchy.
     [[nodiscard]] friend bool operator==(const token &lhs, const token &rhs) noexcept {
         return typeid(lhs) == typeid(rhs) && lhs.equals(rhs);
     }

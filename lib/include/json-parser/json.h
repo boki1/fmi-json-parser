@@ -81,6 +81,19 @@ public:
     class value {
     public:
         virtual ~value() noexcept {}
+
+        // The idea for this implementation of comparison in hierarchy is taken from here:
+        // https://stackoverflow.com/questions/13045399/how-to-implement-operator-for-polymorphic-classes-in-c#13045492.
+        [[nodiscard]] friend bool operator==(const value &lhs, const value &rhs) noexcept {
+            return typeid(lhs) == typeid(rhs) && lhs.equals(rhs);
+        }
+
+        [[nodiscard]] friend bool operator!=(const value &lhs, const value &rhs) noexcept {
+            return !(lhs == rhs);
+        }
+
+        virtual bool equals(const value &) const noexcept { return true; }
+
         virtual void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const = 0;
         virtual json::pmrvalue clone() const = 0;
         virtual bool trivial() const = 0;
@@ -105,27 +118,67 @@ public:
 
     class boolean : public trivial_value {
     public:
-        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
+        ///
+        /// Special member functions.
+        ///
 
         explicit boolean(token_keyword data)
             : m_data{std::move(data)} {}
 
-        json::pmrvalue clone() const override { return mystd::make_unique<boolean>(*this); }
+        /// The `json::boolean` is implicitly convertible to the native `bool` C++ type.
+        boolean(bool data)
+            : m_data{data ? token_keyword::kind::True
+                          : token_keyword::kind::False} {}
 
-        boolean(bool data) : m_data{data ? token_keyword::kind::True : token_keyword::kind::False} {}
+    private:
+        /// Polymorphic comparator
+        [[nodiscard]] bool equals(const value &rhs) const noexcept override {
+            const boolean* rhs_as_boolean = dynamic_cast<const boolean*>(&rhs);
+            if(rhs_as_boolean == nullptr)
+                return false;
+            return value::equals(rhs) && m_data == rhs_as_boolean->m_data;
+        }
+
+    public:
+
         operator bool() const { return m_data.value() == token_keyword::kind::True; }
+
+        ///
+        /// Common behaviour for the `value` types:
+        ///
+
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
+
+        json::pmrvalue clone() const override {
+            return mystd::make_unique<boolean>(*this);
+        }
 
     private:
         token_keyword m_data;
     };
 
     class null : public trivial_value {
+    private:
+        /// Polymorphic comparator
+        /// All `null`s are the identical.
+        [[nodiscard]] bool equals(const value &rhs) const noexcept override {
+            const null* rhs_as_null = dynamic_cast<const null*>(&rhs);
+            if(rhs_as_null == nullptr)
+                return false;
+            return value::equals(rhs);
+        }
+
     public:
+        operator bool() const { return false; }
+
+        ///
+        /// Common behaviour for the `value` types:
+        ///
+
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
 
         json::pmrvalue clone() const override { return mystd::make_unique<null>(*this); }
 
-        operator bool() const { return false; }
 
     private:
         token_keyword m_data{token_keyword::kind::Null};
@@ -133,16 +186,37 @@ public:
 
     class number : public trivial_value {
     public:
-        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
+        ///
+        /// Special member functions.
+        ///
 
         explicit number(token_number data)
             : m_data{std::move(data)} {}
 
-        json::pmrvalue clone() const override { return mystd::make_unique<number>(*this); }
+        /// The `json::number` is implicitly convertible to the native `double` C++ type.
+        number(double data)
+            : m_data{std::move(data)} {}
 
-        // The json::number is implicitly convertible to double.
-        number(double data) : m_data{std::move(data)} {}
         operator double() const { return m_data.value(); }
+
+    private:
+        /// Polymorphic comparator
+        [[nodiscard]] bool equals(const value &rhs) const noexcept override {
+            const number* rhs_as_number = dynamic_cast<const number*>(&rhs);
+            if(rhs_as_number == nullptr)
+                return false;
+            return value::equals(rhs) && m_data == rhs_as_number->m_data;
+        }
+
+    public:
+
+        ///
+        /// Common behaviour for the `value` types:
+        ///
+
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
+
+        json::pmrvalue clone() const override { return mystd::make_unique<number>(*this); }
 
     private:
         token_number m_data;
@@ -150,30 +224,68 @@ public:
 
     class string : public trivial_value {
     public:
-        // json::string has to be hashable, because it is the
-        // key type of json::object's inner map container.
+        ///
+        /// Special member functions.
+        ///
+
+        explicit string(token_string data)
+            : m_data{std::move(data)} {}
+
+        /// The `json::string` is implicitly convertible to the `std::string` C++ type.
+        string(const char *data)
+            : m_data{std::string{data}} {}
+
+        string(const std::string& data)
+            : m_data{std::move(data)} {}
+
+        explicit operator std::string() const { return m_data.value(); }
+
+    private:
+        /// Polymorphic comparator
+        [[nodiscard]] bool equals(const value &rhs) const noexcept override {
+            const string* rhs_as_string = dynamic_cast<const string*>(&rhs);
+            if(rhs_as_string == nullptr)
+                return false;
+            return value::equals(rhs) && m_data == rhs_as_string->m_data;
+        }
+
+    public:
+
+        [[nodiscard]] friend bool operator==(const json::string &lhs, const std::string &rhs) noexcept {
+            return lhs.m_data.value() == rhs;
+        }
+
+        [[nodiscard]] friend bool operator!=(const json::string &lhs, const std::string &rhs) noexcept {
+            return !(lhs == rhs);
+        }
+
+        [[nodiscard]] friend bool operator==(const std::string &rhs, const json::string &lhs) noexcept {
+            return lhs == rhs;
+        }
+
+        [[nodiscard]] friend bool operator!=(const std::string &rhs, const json::string &lhs) noexcept {
+            return lhs != rhs;
+        }
+
+        ///
+        /// Common behaviour for the `value` types:
+        ///
+
+        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
+
+        json::pmrvalue clone() const override { return mystd::make_unique<string>(*this); }
+
+        const value *find(const trivial_value &target) const override;
+        value *find(const trivial_value &target) override;
+
+    public:
+        /// json::string has to be hashable, because it is the key type of
+        /// `json::object`'s inner map container.
         struct hasher {
             size_t operator()(const json::string &s) const {
                 return std::hash<std::string>{}(s.m_data.value());
             }
         };
-
-        bool operator==(const json::string &rhs) const { return m_data.value() == rhs.m_data.value(); }
-        bool operator!=(const json::string &rhs) const { return !(*this == rhs); }
-\
-        json::pmrvalue clone() const override { return mystd::make_unique<string>(*this); }
-
-    public:
-        void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override;
-
-        // The json::string is implicitly convertible to std::string, because
-        // we want to support indexing JSON objects with string objects and literals.
-        string(const char *data) : m_data{std::string{data}} {}
-        string(const std::string& data) : m_data{std::move(data)} {}
-        operator std::string() const { return m_data.value(); }
-
-        explicit string(token_string data)
-            : m_data{std::move(data)} {}
 
     private:
         token_string m_data;
@@ -195,18 +307,19 @@ public:
         using data_type = DataType;
 
     public:
-        void serialize(std::ostream &, std::size_t, bool = false) const override { mystd::unreachable(); }
-        json::pmrvalue clone() const override { mystd::unreachable(); }
+        virtual ~container_value() noexcept = default;
 
-        template <typename ...ItemType>
-        void append(ItemType&& ...) { mystd::unreachable(); }
+    public:
+        ///
+        /// Common behaviour for the compound `value` types:
+        ///
 
         bool trivial() const override { return false; }
         bool compound() const override { return true; }
 
-        virtual ~container_value() noexcept = default;
+        template <typename ...ItemType>
+        void append(ItemType&& ...) { mystd::unreachable(); }
 
-    public:
         [[nodiscard]] json::value &operator[](auto &&i) {
             auto &pmrval = m_data.at(mystd::forward<decltype(i)>(i));
             return *pmrval;
@@ -234,6 +347,10 @@ public:
                        mystd::unordered_map<json::string, pmrvalue, json::string::hasher>>
     {
     public:
+        ///
+        /// Common behaviour for the `value` types:
+        ///
+
         void serialize(std::ostream &os, std::size_t depth, bool in_object = false) const override {
             if (!in_object)
                 os << std::string(depth, ' ');
@@ -264,11 +381,23 @@ public:
             }
             return cloned;
         }
+
+    private:
+        /// Polymorphic comparator
+        [[nodiscard]] bool equals(const value &rhs) const noexcept override {
+            const object* rhs_as_object = dynamic_cast<const object*>(&rhs);
+            if(rhs_as_object == nullptr)
+                return false;
+            return value::equals(rhs) && m_data == rhs_as_object->m_data;
+        }
     };
 
     class array : public container_value<std::vector<pmrvalue>>
     {
     public:
+        ///
+        /// Common behaviour for the `value` types:
+        ///
 
         void serialize(std::ostream &os, std::size_t depth, [[maybe_unused]] bool in_object = false) const override {
             if (!in_object)
@@ -293,6 +422,15 @@ public:
             for (const auto &val : m_data)
                 cloned->append(val->clone());
             return cloned;
+        }
+
+    private:
+        /// Polymorphic comparator
+        [[nodiscard]] bool equals(const value &rhs) const noexcept override {
+            const array* rhs_as_array = dynamic_cast<const array*>(&rhs);
+            if(rhs_as_array == nullptr)
+                return false;
+            return value::equals(rhs) && m_data == rhs_as_array->m_data;
         }
     };
 
