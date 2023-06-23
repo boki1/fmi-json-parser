@@ -34,3 +34,4 @@ add_unit_test(reprint test_reprint.cpp)
 
 add_unit_test(memory mystd/test_memory.cpp)
 add_unit_test(optional mystd/test_optional.cpp)
+add_unit_test(unordered_map mystd/test_unordered_map.cpp)
