@@ -120,7 +120,7 @@ private:
         // Also, on entering this function the '{' token is not yet consumed.
         assert(token_as<token_punct>(object_begin)->value() == '{');
 
-        json::pmrvalue node = make_node<json::object>();
+        json::pmrvalue node = json::make_node<json::object>();
         json::object &node_as_object = dynamic_cast<json::object &>(*node.get());
 
         for (;;) {
@@ -156,7 +156,7 @@ private:
         // Also, on entering this function the '[' token is not yet consumed.
         assert(token_as<token_punct>(array_begin)->value() == '[');
 
-        json::pmrvalue node = make_node<json::array>();
+        json::pmrvalue node = json::make_node<json::array>();
         json::array &node_as_array = dynamic_cast<json::array &>(*node.get());
         for (;;) {
             node_as_array.append(parse_value());
@@ -202,14 +202,14 @@ private:
 
         json::pmrvalue next_node;
         if (auto *str = token_as<token_string>(next_tok_ptr); str != nullptr)
-            next_node = make_node<json::string>(*str);
+            next_node = json::make_node<json::string>(*str);
         else if (auto *num = token_as<token_number>(next_tok_ptr); num != nullptr)
-            next_node = make_node<json::number>(*num);
+            next_node = json::make_node<json::number>(*num);
         else if (auto *kw = token_as<token_keyword>(next_tok_ptr); kw != nullptr){
             if (kw->value() == token_keyword::kind::Null)
-                next_node = make_node<json::null>();
+                next_node = json::make_node<json::null>();
             else
-                next_node = make_node<json::boolean>(*kw);
+                next_node = json::make_node<json::boolean>(*kw);
         }
 
         if (next_node) {

@@ -100,6 +100,12 @@ public:
         virtual bool compound() const = 0;
     };
 
+    /// Helper
+    template <typename NodeType, typename ...T>
+    static json::pmrvalue make_node(T&& ...args) {
+        return mystd::make_unique<NodeType>(mystd::forward<T>(args)...);
+    }
+
     ///
     /// Trivial JSON types.
     ///
@@ -518,6 +524,54 @@ public:
     void dump(std::ostream &os) const;
 
     ///
+    /// Produces a new JSON object which contains only those value that meet
+    /// the provided criterium. As "mapped" are considered the JSON values
+    /// that stand on the right side of ':'. For example if the inspected
+    /// JSON object is { "Apple": "This is mapped" }, then "This is mapped"
+    /// is mapped, whereas "Apple" is not. Singular values in JSON arrays
+    /// are never mapped by themselves.
+    ///
+    template <typename Func>
+    json extract_mapped_if(Func criterium) {
+        std::vector<const json::value *> next_nodes;
+        next_nodes.push_back(m_root_node.get());
+
+        auto take_next = [&next_nodes]() {
+            const json::value *next = next_nodes.back();
+            next_nodes.pop_back();
+            return next;
+        };
+
+        json::pmrvalue result_root_node = json::make_node<json::array>();
+        json::array &result_root_array = dynamic_cast<json::array &>(*result_root_node);
+
+        while (!next_nodes.empty()) {
+            const json::value *current = take_next();
+            if (current->trivial())
+                continue;
+
+            if (auto *current_as_array = dynamic_cast<const json::array *>(current); current_as_array != nullptr) {
+                for (const auto &el: current_as_array->m_data)
+                    next_nodes.push_back(el.get());
+                continue;
+            }
+
+            auto *current_as_object = dynamic_cast<const json::object *>(current);
+            // Safety: At this point `current` is neither a trivial JSON type, nor an array. The only
+            // other possibility is for it to be an object.
+            assert(current_as_object != nullptr);
+
+            for (const auto &[key, mapped] : current_as_object->m_data) {
+                if (criterium(key, *mapped))
+                    result_root_array.append(mapped->clone());
+                if (mapped->compound())
+                    next_nodes.push_back(mapped.get());
+            }
+        }
+
+        return json{std::move(result_root_node)};
+    }
+    ///
     /// Properties
     ///
 
@@ -556,15 +610,6 @@ public:
 private:
     json::pmrvalue m_root_node;
 };
-
-///
-/// Helpers
-///
-
-template <typename NodeType, typename ...T>
-json::pmrvalue make_node(T&& ...args) {
-    return mystd::make_unique<NodeType>(mystd::forward<T>(args)...);
-}
 
 } // namespace json_parser
 
