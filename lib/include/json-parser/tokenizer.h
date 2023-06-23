@@ -113,7 +113,7 @@ struct token {
 	virtual ~token() noexcept = default;
 
     virtual void serialize(std::ostream &os) const = 0;
-    virtual std::unique_ptr<token> clone() const noexcept = 0;
+    virtual mystd::unique_ptr<token> clone() const noexcept = 0;
 };
 
 class token_string final : public token {
@@ -127,7 +127,7 @@ public:
 
     void serialize(std::ostream &os) const override;
 
-    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_string>(*this); }
+    mystd::unique_ptr<token> clone() const noexcept override { return mystd::make_unique<token_string>(*this); }
 
 private:
 	std::string m_value;
@@ -144,7 +144,7 @@ public:
 
     void serialize(std::ostream &os) const override;
 
-    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_number>(*this); }
+    mystd::unique_ptr<token> clone() const noexcept override { return mystd::make_unique<token_number>(*this); }
 
 private:
 	double m_value;
@@ -167,7 +167,7 @@ public:
 
     void serialize(std::ostream &os) const override;
 
-    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_keyword>(*this); }
+    mystd::unique_ptr<token> clone() const noexcept override { return mystd::make_unique<token_keyword>(*this); }
 
 private:
     kind m_value;
@@ -186,7 +186,7 @@ public:
 
     void serialize(std::ostream& os) const override;
 
-    std::unique_ptr<token> clone() const noexcept override { return std::make_unique<token_punct>(*this); }
+    mystd::unique_ptr<token> clone() const noexcept override { return mystd::make_unique<token_punct>(*this); }
 
     [[nodiscard]] static bool is_valid(char value);
 

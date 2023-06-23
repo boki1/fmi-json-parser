@@ -208,12 +208,12 @@ public:
 
     public:
         [[nodiscard]] json::value &operator[](auto &&i) {
-            auto &pmrval = m_data.at(std::forward<decltype(i)>(i));
+            auto &pmrval = m_data.at(mystd::forward<decltype(i)>(i));
             return *pmrval;
         }
 
         [[nodiscard]] const json::value &operator[](auto &&i) const {
-            const auto &pmrval = m_data.at(std::forward<decltype(i)>(i));
+            const auto &pmrval = m_data.at(mystd::forward<decltype(i)>(i));
             return *pmrval;
         }
 
@@ -251,7 +251,7 @@ public:
 
         template <typename ...ItemType>
         void append(ItemType&& ...item_args) {
-            m_data.emplace(std::forward<ItemType>(item_args)...);
+            m_data.emplace(mystd::forward<ItemType>(item_args)...);
         }
 
         json::pmrvalue clone() const override {
@@ -285,11 +285,11 @@ public:
 
         template <typename ...ItemType>
         void append(ItemType&& ...item_args) {
-            m_data.emplace_back(std::forward<ItemType>(item_args)...);
+            m_data.emplace_back(mystd::forward<ItemType>(item_args)...);
         }
 
         json::pmrvalue clone() const override {
-            auto cloned = std::make_unique<array>();
+            auto cloned = mystd::make_unique<array>();
             for (const auto &val : m_data)
                 cloned->append(val->clone());
             return cloned;
@@ -322,7 +322,7 @@ public:
 
         if constexpr (stringable<decltype(i)>) {
             if (const auto *root_as_object = dynamic_cast<const json::object *>(m_root_node.get()); root_as_object)
-                return (*root_as_object)[std::forward<decltype(i)>(i)];
+                return (*root_as_object)[mystd::forward<decltype(i)>(i)];
         }
 
         throw json_exception("Cannot index a non-container JSON type");
@@ -336,7 +336,7 @@ public:
 
         if constexpr (stringable<decltype(i)>) {
             if (auto *root_as_object = dynamic_cast<json::object *>(m_root_node.get()); root_as_object)
-                return (*root_as_object)[std::forward<decltype(i)>(i)];
+                return (*root_as_object)[mystd::forward<decltype(i)>(i)];
         }
 
         throw json_exception("Cannot index a non-container JSON type");
