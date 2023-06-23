@@ -479,7 +479,13 @@ private:
         }
     }
 
-    char peek() const { return m_input_reader.peek(); }
+    char peek() const {
+        try {
+            return m_input_reader.peek();
+        } catch (const input_reader_exception &ire) {
+            throw token_exception_here(ire.what());
+        }
+    }
 
     enum class get_preference {
         DontUpdateLocation,
