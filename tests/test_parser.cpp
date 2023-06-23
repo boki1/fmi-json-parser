@@ -10,15 +10,6 @@ using namespace json_parser;
 // { "fruit" : "Apply" } when parsed should be usable as
 // const json::string val = parsed["fruit"];
 
-static json parse_from_file(const std::string &filename) {
-    return ifs_parser{ifs_input_reader{filename}}();
-}
-
-static json parse_from_string(const std::string &filename) {
-    std::string contents = slurp(filename);
-    return str_parser{str_input_reader{contents}}();
-}
-
 TEST(JsonTests, ParseStringOnly) {
     json parsed = parse_from_file(TESTS_DIR_PREFIX"samples/string-only.json");
     EXPECT_NO_THROW((void) parsed.root_unsafe());

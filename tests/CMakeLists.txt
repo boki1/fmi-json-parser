@@ -31,6 +31,7 @@ add_unit_test(it_works test_it_works.cpp)
 add_unit_test(tokenizer test_tokenizer.cpp)
 add_unit_test(parser test_parser.cpp)
 add_unit_test(reprint test_reprint.cpp)
+add_unit_test(json test_json.cpp)
 
 add_unit_test(memory mystd/test_memory.cpp)
 add_unit_test(optional mystd/test_optional.cpp)

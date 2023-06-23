@@ -8,6 +8,7 @@
 namespace fs = std::filesystem;
 
 #include <json-parser/parser.h>
+#include <json-parser/input_reader.h>
 
 #ifndef TESTS_DIR_PREFIX
 #define TESTS_DIR_PREFIX "tests/"
@@ -51,6 +52,15 @@ std::pair<std::string, std::string> reprint(const std::string &sample_name) {
     parsed1.dump(out2_ifs);
 
     return std::make_pair(slurp(out1), slurp(out2));
+}
+
+json_parser::json parse_from_file(const std::string &filename) {
+    return json_parser::ifs_parser{json_parser::ifs_input_reader{filename}}();
+}
+
+json_parser::json parse_from_string(const std::string &filename) {
+    std::string contents = slurp(filename);
+    return json_parser::str_parser{json_parser::str_input_reader{contents}}();
 }
 
 #endif // FMI_JSON_PARSER_TESTS_COMMON_INCLUDED
