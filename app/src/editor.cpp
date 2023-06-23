@@ -39,6 +39,7 @@ void editor::loop() {
 namespace json_editor::commands {
 
 using json_editor::editor;
+using namespace json_parser;
 
 bool open_cmd(editor &ed) {
     if (ed.active()) {
@@ -108,11 +109,43 @@ bool print_cmd(editor &ed) {
     return false;
 }
 
-bool search_cmd(editor &) {
+static json_parser::json::pmrvalue string_to_trivial_json(const std::string &contents) {
+    json_parser::str_parser parser{json_parser::str_input_reader{contents}};
+    json_parser::json parsed = parser();
+    if (parsed.trivial())
+        return parsed.take();
+    return nullptr;
+}
+
+static mystd::optional<json> search_helper(editor &ed) {
+    std::string key_as_str;
+    ed.in() >> key_as_str;
+    auto key_as_pmr = string_to_trivial_json(key_as_str);
+    if (!key_as_pmr) {
+        ed.out() << "Invalid trivial JSON type was entered.\n";
+        return {};
+    }
+
+    const json_parser::json result = ed.draft().extract_mapped_if(
+        [target = key_as_pmr->clone()](
+            const json::value &key, const json::value &) {
+            return key == *target;
+        });
+
+    return result;
+}
+
+bool search_cmd(editor &ed) {
+    if (auto result = search_helper(ed); result){
+        result->dump(ed.out());
+        ed.out() << '\n';
+    }
     return false;
 }
 
-bool contains_cmd(editor &) {
+bool contains_cmd(editor &ed) {
+    if (auto result = search_helper(ed); result)
+        ed.out() << (result->empty() ? "Key does not exist." : "Key exists.") << '\n';
     return false;
 }
 
