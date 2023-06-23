@@ -178,7 +178,7 @@ public:
 
     [[nodiscard]] char get() override {
         if (m_pos < m_str.size())
-            return m_str[m_pos];
+            return m_str[m_pos++];
         throw input_reader_exception("Trying to get from str_input_reader out of bounds.");
     }
 
