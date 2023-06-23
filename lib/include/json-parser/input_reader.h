@@ -74,14 +74,14 @@ public:
         : m_ifs_filename{ifs_filename}
         , m_ifs{ifs_filename} {
         if (!ready())
-            throw input_reader_exception{"Cannot open input '" + m_ifs_filename + "'of type `ifs_input_reader`."};
+            throw input_reader_exception{"Cannot open input '" + m_ifs_filename + "' of type `ifs_input_reader`."};
     }
 
     ifs_input_reader(const ifs_input_reader &rhs)
         : m_ifs_filename{rhs.m_ifs_filename}
         , m_ifs{rhs.m_ifs_filename} {
         if (!ready())
-            throw input_reader_exception{"Cannot open input '" + m_ifs_filename + "'of type `ifs_input_reader`."};
+            throw input_reader_exception{"Cannot open input '" + m_ifs_filename + "' of type `ifs_input_reader`."};
     }
 
     ifs_input_reader& operator=(const ifs_input_reader &rhs) {
