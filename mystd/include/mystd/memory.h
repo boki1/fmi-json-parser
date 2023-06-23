@@ -52,17 +52,12 @@ public:
 
     template <typename U>
     unique_ptr(unique_ptr<U> &&rhs)
-        : m_ptr{rhs.get()}
-    {
-        rhs.reset();
-    }
+        : m_ptr{rhs.release()} {}
 
     template <typename U>
     unique_ptr& operator=(unique_ptr<U> &&rhs) noexcept {
-        if (*this == rhs)
-            return *this;
-        m_ptr = rhs.get();
-        rhs.reset();
+        if (*this != rhs)
+            m_ptr = rhs.release();
         return *this;
     }
 
@@ -124,7 +119,7 @@ public:
     explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
 private:
-    T *m_ptr;
+    T *m_ptr{nullptr};
 };
 
 /// Make unique_ptr<T> hashable using mystd::hash<T>.
