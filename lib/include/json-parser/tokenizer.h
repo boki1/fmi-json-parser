@@ -112,6 +112,16 @@ private:
 struct token {
 	virtual ~token() noexcept = default;
 
+    [[nodiscard]] friend bool operator==(const token &lhs, const token &rhs) noexcept {
+        return typeid(lhs) == typeid(rhs) && lhs.equals(rhs);
+    }
+
+    [[nodiscard]] friend bool operator!=(const token &lhs, const token &rhs) noexcept {
+        return !(lhs == rhs);
+    }
+
+    virtual bool equals(const token &) const noexcept { return true; }
+
     virtual void serialize(std::ostream &os) const = 0;
     virtual mystd::unique_ptr<token> clone() const noexcept = 0;
 };
@@ -123,6 +133,15 @@ public:
 	{
     }
 
+private:
+    bool equals(const token &rhs) const noexcept override {
+        const token_string* rhs_as_string = dynamic_cast<const token_string*>(&rhs);
+        if(rhs_as_string == nullptr)
+            return false;
+        return token::equals(rhs) && m_value == rhs_as_string->m_value;
+    }
+
+public:
 	[[nodiscard]] const std::string& value() const noexcept { return m_value; }
 
     void serialize(std::ostream &os) const override;
@@ -163,6 +182,15 @@ public:
 	{
 	}
 
+private:
+    bool equals(const token &rhs) const noexcept override {
+        const token_keyword* rhs_as_keyword = dynamic_cast<const token_keyword*>(&rhs);
+        if(rhs_as_keyword == nullptr)
+            return false;
+        return token::equals(rhs) && m_value == rhs_as_keyword->m_value;
+    }
+
+public:
     [[nodiscard]] kind value() const noexcept { return m_value; }
 
     void serialize(std::ostream &os) const override;
@@ -182,6 +210,15 @@ public:
 		assert(token_punct::is_valid(value));
     }
 
+private:
+    bool equals(const token &rhs) const noexcept override {
+        const token_punct* rhs_as_punct = dynamic_cast<const token_punct*>(&rhs);
+        if(rhs_as_punct == nullptr)
+            return false;
+        return token::equals(rhs) && m_value == rhs_as_punct->m_value;
+    }
+
+public:
 	[[nodiscard]] char value() const noexcept { return m_value; }
 
     void serialize(std::ostream& os) const override;
