@@ -21,4 +21,5 @@ TEST(JsonTests, Reprint) {
     reprint_cmp("samples/jokes.json");
     reprint_cmp("samples/nested.json");
     reprint_cmp("samples/array_of_objects.json");
+    reprint_cmp("samples/organisation.json");
 }
