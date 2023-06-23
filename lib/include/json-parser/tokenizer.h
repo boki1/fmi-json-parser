@@ -86,11 +86,11 @@ private:
 class token_exception : public std::exception {
 
 public:
-	explicit token_exception(std::string msg,
-		mystd::optional<location> location = {})
-		: m_location { location }
-		, m_msg { std::move(msg) }
-	{
+    explicit token_exception(std::string msg,
+                              mystd::optional<location> location = {})
+        : m_location { mystd::move(location) }
+        , m_msg { mystd::move(msg) }
+    {
     }
 
     virtual ~token_exception() = default;

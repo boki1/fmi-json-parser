@@ -43,7 +43,7 @@ public:
         : m_has_value{other.m_has_value}
     {
         if (other.m_has_value)
-            m_ptr.reset(mystd::move(other.m_ptr.get()));
+            **this = *other;
     }
 
     optional& operator=(const optional &other) {
@@ -51,15 +51,14 @@ public:
             reset();
         m_has_value = other.m_has_value;
         if (m_has_value)
-            m_ptr.reset(mystd::move(other.m_ptr.get()));
+            **this = *other;
     }
 
     optional(optional &&other) noexcept
         : m_has_value{other.m_has_value}
     {
         if (m_has_value)
-            m_ptr.reset(mystd::move(other.m_ptr.get()));
-        other.m_has_value = false;
+            m_ptr.reset(other.m_ptr.release());
     }
 
     optional& operator=(optional &&other) noexcept {
@@ -67,8 +66,7 @@ public:
             reset();
         m_has_value = other.m_has_value;
         if (m_has_value)
-            m_ptr.reset(mystd::move(other.m_ptr.get()));
-        other.m_has_value = false;
+            m_ptr.reset(other.m_ptr.release());
     }
 
     ~optional() noexcept = default;
@@ -221,6 +219,7 @@ public:
         if (m_has_value)
             reset();
         m_ptr = mystd::make_unique<T>(std::forward<Args>(args)...);
+        m_has_value = true;
         return value();
     }
 

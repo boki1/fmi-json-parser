@@ -21,8 +21,8 @@ class parser_exception : public std::exception {
 public:
     explicit parser_exception(std::string msg,
                              mystd::optional<location> location = {})
-        : m_location { location }
-        , m_msg { std::move(msg) }
+        : m_location { mystd::move(location) }
+        , m_msg { mystd::move(msg) }
     {
     }
 
@@ -100,7 +100,7 @@ private:
         const auto token_end = m_tokenizer.end();
 
         if (m_token_cit == token_end) {
-            m_parsed.reset();
+            m_parsed.emplace();
             return;
         }
 

@@ -3,11 +3,8 @@
 
 // There is defined the "toggle" macro.
 #include <mystd/enable.h>
-#include <mystd/utility.h>
 
-#include <cmath> // for std::size_t
-
-#ifdef FMI_OOP_USE_MYSTD_MEMORY
+#ifndef FMI_OOP_USE_MYSTD_MEMORY
 
 #include <memory>
 
@@ -19,6 +16,10 @@ using std::make_unique;
 }
 
 #else
+
+#include <mystd/utility.h>
+
+#include <cmath> // for std::size_t
 
 namespace mystd {
 
@@ -124,12 +125,12 @@ private:
 
 /// Make unique_ptr<T> hashable using mystd::hash<T>.
 
-template <typename T>
-struct hash<unique_ptr<T>> {
-    size_t operator()(const mystd::unique_ptr<T> &up) const noexcept {
-        return static_cast<unsigned long>(up.get());
-    }
-};
+//template <typename T>
+//struct hash<unique_ptr<T>> {
+//    size_t operator()(const mystd::unique_ptr<T> &up) const noexcept {
+//        return static_cast<unsigned long>(up.get());
+//    }
+//};
 
 /// Helper
 template <class T, class... Args>
