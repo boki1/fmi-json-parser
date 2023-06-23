@@ -74,3 +74,7 @@ TEST(JsonTests, TokenizeBadUnclosedString)
 {
     EXPECT_THROW(tokenize_and_get_details(TESTS_DIR_PREFIX"samples/bad_unclosed_string.json"), token_exception);
 }
+
+TEST(JsonTests, TokenizeOrganization) {
+    EXPECT_NO_THROW(tokenize_and_get_details(TESTS_DIR_PREFIX"samples/organisation.json"));
+}

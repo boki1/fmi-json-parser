@@ -381,7 +381,7 @@ private:
 
         switch ([[maybe_unused]] char sym = peek()) {
         case '-': [[fallthrough]];
-        case '1' ... '9':
+        case '0' ... '9':
             return consume_number();
         case '"':
             return consume_string();
