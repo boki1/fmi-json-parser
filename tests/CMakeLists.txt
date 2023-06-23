@@ -33,3 +33,4 @@ add_unit_test(parser test_parser.cpp)
 add_unit_test(reprint test_reprint.cpp)
 
 add_unit_test(memory mystd/test_memory.cpp)
+add_unit_test(optional mystd/test_optional.cpp)

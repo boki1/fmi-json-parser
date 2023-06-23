@@ -100,7 +100,7 @@ private:
         const auto token_end = m_tokenizer.end();
 
         if (m_token_cit == token_end) {
-            m_parsed.emplace();
+            m_parsed.reset();
             return;
         }
 
