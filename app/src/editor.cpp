@@ -101,10 +101,10 @@ static mystd::optional<json> search_helper(editor &ed) {
     return result;
 }
 
-static mystd::optional<json_parser::json::path> read_path(editor &ed) {
+static mystd::optional<json_parser::json::path> read_path(editor &ed, std::string prompt = "path") {
     json_parser::json::path path;
     std::string path_begin;
-    ed.out() << "Enter the path: ";
+    ed.out() << "Enter " << prompt << ": ";
     ed.in() >> path_begin;
     if (path_begin != "["){
         ed.out() << "Invalid path - it should start with '[' and end with ']'.\n";
@@ -122,6 +122,67 @@ static mystd::optional<json_parser::json::path> read_path(editor &ed) {
     }
 
     return path;
+}
+
+enum class with_object {
+    KeyOnly,
+    KeyAndMapped
+};
+
+template <with_object Pref = with_object::KeyAndMapped, typename Func>
+static void with_new_object_element(editor &ed, Func action) {
+    ed.out() << "Enter key: ";
+    std::string key_str = read_string_from(ed.in());
+    json_parser::json::pmrvalue key = string_to_trivial_json(key_str);
+    if (!key) {
+        ed.out() << "Invalid new node - it has to be a valid JSON trivial type.\n";
+        return;
+    }
+    auto *key_as_str = dynamic_cast<json_parser::json::string *>(key.get());
+    if (!key_as_str) {
+        ed.out() << "Error: Expecting json::string as key.\n";
+        return;
+    }
+
+    using enum with_object;
+    if constexpr (Pref == KeyOnly) {
+        action(*key_as_str);
+        return;
+    }
+
+    ed.out() << "Enter mapped:\n";
+    std::string mapped_str = read_snippet_from(ed.in());
+    json_parser::json::pmrvalue mapped;
+    try {
+        json_parser::json parsed = json_parser::str_parser{json_parser::str_input_reader{mapped_str}}();
+        mapped = parsed.take();
+    } catch (const json_parser::parser_exception &pe) {
+        ed.out() << "Error: " + std::string(pe.what()) << '\n';
+        return;
+    }
+
+    if constexpr (Pref == KeyAndMapped) {
+        action(*key_as_str, mystd::move(mapped));
+        return;
+    }
+
+    // Safety: Key and KeyAndMapped are the only available options.
+    mystd::unreachable();
+}
+
+template <typename Func>
+static void with_new_array_element(editor &ed, Func action) {
+    ed.out() << "Enter key: ";
+    json_parser::json::pmrvalue key;
+    try {
+        std::string key_as_str = read_snippet_from(ed.in());
+        json_parser::json parsed = json_parser::str_parser{json_parser::str_input_reader{key_as_str}}();
+        key = parsed.take();
+    } catch (const json_parser::parser_exception &pe) {
+        ed.out() << "Error: " + std::string(pe.what()) << '\n';
+    }
+
+    action(mystd::move(key));
 }
 
 ///
@@ -349,10 +410,25 @@ bool create_cmd(editor &ed) {
         return false;
     }
 
+    using enum with_object;
     if (auto *node_as_object = dynamic_cast<json::object *>(node); node_as_object)
-        create_object_element(ed, *node_as_object);
+        with_new_object_element<KeyAndMapped>(ed, [&](auto &&key, auto &&mapped) {
+            if (node_as_object->contains(key)) {
+                ed.out() << "Error: This key already exists.\n";
+                return;
+            }
+
+            node_as_object->append(key, mystd::forward<decltype(mapped)>(mapped));
+        });
     else if (auto *node_as_array = dynamic_cast<json::array *>(node); node_as_array)
-        create_array_element(ed, *node_as_array);
+        with_new_array_element(ed, [&](auto &&key){
+            if (node_as_array->contains(*key)) {
+                ed.out() << "Error: This key already exists.\n";
+                return;
+            }
+
+            node_as_array->append(mystd::forward<decltype(key)>(key));
+        });
 
     return false;
 }
