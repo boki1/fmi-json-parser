@@ -41,6 +41,93 @@ namespace json_editor::commands {
 using json_editor::editor;
 using namespace json_parser;
 
+///
+/// Helper functions used in the commands implementation.
+///
+
+static std::string read_string_from(std::istream &is) {
+    std::string read;
+    while (true) {
+        std::string piece;
+        is >> piece;
+        read += piece;
+        if (!read.starts_with("\""))
+            break;
+        if (read.ends_with("\""))
+            break;
+    }
+
+    return read;
+}
+
+static std::string read_snippet_from(std::istream &is) {
+    std::string read;
+    while (true) {
+        std::string piece;
+        is >> piece;
+        if (read.size() > 0 && piece == "```")
+            break;
+        if (read.size() == 0 && piece == "```")
+            continue;
+        read += piece;
+    }
+
+    return read;
+}
+
+static json_parser::json::pmrvalue string_to_trivial_json(const std::string &contents) {
+    json_parser::str_parser parser{json_parser::str_input_reader{contents}};
+    json_parser::json parsed = parser();
+    if (parsed.trivial())
+        return parsed.take();
+    return nullptr;
+}
+
+static mystd::optional<json> search_helper(editor &ed) {
+    std::string key_as_str = read_string_from(ed.in());
+
+    auto key_as_pmr = string_to_trivial_json(key_as_str);
+    if (!key_as_pmr) {
+        ed.out() << "Invalid trivial JSON type was entered.\n";
+        return {};
+    }
+
+    const json_parser::json result = ed.draft().extract_mapped_if(
+        [target = key_as_pmr->clone()](
+            const json::value &key, const json::value &) {
+            return key == *target;
+        });
+
+    return result;
+}
+
+static mystd::optional<json_parser::json::path> read_path(editor &ed) {
+    json_parser::json::path path;
+    std::string path_begin;
+    ed.out() << "Enter the path: ";
+    ed.in() >> path_begin;
+    if (path_begin != "["){
+        ed.out() << "Invalid path - it should start with '[' and end with ']'.\n";
+        return {};
+    }
+
+    for (std::string content; ; content.clear()) {
+        content = read_string_from(ed.in());
+        if (content == "]")
+            break;
+        auto path_component = string_to_trivial_json(content);
+        if (!path_component)
+            ed.out() << "Invalid path component used '" + content + "'.\n";
+        path.push_back(std::move(path_component));
+    }
+
+    return path;
+}
+
+///
+/// Commands implementation
+///
+
 bool open_cmd(editor &ed) {
     if (ed.active()) {
         ed.out() << "File '" + ed.draft_origin() + "' is already opened. Close it first before opening another file.\n";
@@ -76,6 +163,8 @@ bool close_cmd(editor &ed) {
 }
 
 bool save_cmd(editor &ed) {
+
+
     if (!ed.active()) {
         ed.out() << "No file is opened.\n";
         return false;
@@ -114,33 +203,12 @@ bool print_cmd(editor &ed) {
     return false;
 }
 
-static json_parser::json::pmrvalue string_to_trivial_json(const std::string &contents) {
-    json_parser::str_parser parser{json_parser::str_input_reader{contents}};
-    json_parser::json parsed = parser();
-    if (parsed.trivial())
-        return parsed.take();
-    return nullptr;
-}
-
-static mystd::optional<json> search_helper(editor &ed) {
-    std::string key_as_str;
-    ed.in() >> key_as_str;
-    auto key_as_pmr = string_to_trivial_json(key_as_str);
-    if (!key_as_pmr) {
-        ed.out() << "Invalid trivial JSON type was entered.\n";
-        return {};
+bool search_cmd(editor &ed) {
+    if (!ed.active()) {
+        ed.out() << "No file is opened.\n";
+        return false;
     }
 
-    const json_parser::json result = ed.draft().extract_mapped_if(
-        [target = key_as_pmr->clone()](
-            const json::value &key, const json::value &) {
-            return key == *target;
-        });
-
-    return result;
-}
-
-bool search_cmd(editor &ed) {
     if (auto result = search_helper(ed); result){
         result->dump(ed.out());
         ed.out() << '\n';
@@ -149,16 +217,143 @@ bool search_cmd(editor &ed) {
 }
 
 bool contains_cmd(editor &ed) {
+    if (!ed.active()) {
+        ed.out() << "No file is opened.\n";
+        return false;
+    }
+
     if (auto result = search_helper(ed); result)
         ed.out() << (result->empty() ? "Key does not exist." : "Key exists.") << '\n';
     return false;
 }
 
-bool set_cmd(editor &) {
+bool set_cmd(editor &ed) {
+    if (!ed.active()) {
+        ed.out() << "No file is opened.\n";
+        return false;
+    }
+
+    auto maybe_path = read_path(ed);
+    if (!maybe_path)
+        return false;
+    auto &path = *maybe_path;
+
+    json_parser::json::value *node{nullptr};
+    try {
+        node = ed.draft().follow(path);
+    } catch (const json_parser::json_exception &je) {
+        ed.out() << "Invalid path used - it does not exist.\n";
+        return false;
+    }
+
+    // Safety: follow either throws an error or returns a valid ptr to a JSON node.
+    assert(node != nullptr);
+
+    ed.out() << "Looking at:\n";
+    node->serialize(ed.out(), /* depth */ 0);
+    ed.out() << '\n';
+
+    ed.out() << "Enter the new node: ";
+    std::string new_node_str = read_string_from(ed.in());
+    json_parser::json::pmrvalue new_node = string_to_trivial_json(new_node_str);
+    if (!new_node) {
+        ed.out() << "Invalid new node - it has to be a valid JSON trivial type.\n";
+        return false;
+    }
+
+    *node = mystd::move(*new_node);
+
     return false;
 }
 
-bool create_cmd(editor &) {
+static void create_object_element(editor &ed, json::object &node) {
+    ed.out() << "Enter key: ";
+    std::string key_str = read_string_from(ed.in());
+    json_parser::json::pmrvalue key = string_to_trivial_json(key_str);
+    if (!key) {
+        ed.out() << "Invalid new node - it has to be a valid JSON trivial type.\n";
+        return;
+    }
+    auto *key_as_str = dynamic_cast<json_parser::json::string *>(key.get());
+    if (!key_as_str) {
+        ed.out() << "Error: Expecting json::string as key.\n";
+        return;
+    }
+
+    ed.out() << "Enter mapped:\n";
+    std::string mapped_str = read_snippet_from(ed.in());
+    json_parser::json::pmrvalue mapped;
+    try {
+        json_parser::json parsed = json_parser::str_parser{json_parser::str_input_reader{mapped_str}}();
+        mapped = parsed.take();
+    } catch (const json_parser::parser_exception &pe) {
+        ed.out() << "Error: " + std::string(pe.what()) << '\n';
+        return;
+    }
+
+    if (node.contains(*key_as_str)) {
+        ed.out() << "Error: This key already exists.\n";
+        return;
+    }
+
+    node.append(*key_as_str, mystd::move(mapped));
+}
+
+static void create_array_element(editor &ed, json::array &node) {
+    ed.out() << "Enter key: ";
+    json_parser::json::pmrvalue key;
+    try {
+        std::string key_as_str = read_snippet_from(ed.in());
+        json_parser::json parsed = json_parser::str_parser{json_parser::str_input_reader{key_as_str}}();
+        key = parsed.take();
+    } catch (const json_parser::parser_exception &pe) {
+        ed.out() << "Error: " + std::string(pe.what()) << '\n';
+    }
+
+    if (node.contains(*key)) {
+        ed.out() << "Error: This key already exists.\n";
+        return;
+    }
+
+    node.append(mystd::move(key));
+}
+
+bool create_cmd(editor &ed) {
+    if (!ed.active()) {
+        ed.out() << "No file is opened.\n";
+        return false;
+    }
+
+    auto maybe_path = read_path(ed);
+    if (!maybe_path)
+        return false;
+    auto &path = *maybe_path;
+
+    json_parser::json::value *node{nullptr};
+    try {
+        node = ed.draft().follow(path);
+    } catch (const json_parser::json_exception &je) {
+        ed.out() << "Invalid path used - it does not exist.\n";
+        return false;
+    }
+
+    // Safety: follow either throws an error or returns a valid ptr to a JSON node.
+    assert(node != nullptr);
+
+    ed.out() << "Looking at:\n";
+    node->serialize(ed.out(), /* depth */ 0);
+    ed.out() << '\n';
+
+    if (node->trivial()) {
+        ed.out() << "Cannot add elements to a trivial JSON type.\n";
+        return false;
+    }
+
+    if (auto *node_as_object = dynamic_cast<json::object *>(node); node_as_object)
+        create_object_element(ed, *node_as_object);
+    else if (auto *node_as_array = dynamic_cast<json::array *>(node); node_as_array)
+        create_array_element(ed, *node_as_array);
+
     return false;
 }
 

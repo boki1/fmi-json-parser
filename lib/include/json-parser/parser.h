@@ -123,6 +123,13 @@ private:
         json::pmrvalue node = json::make_node<json::object>();
         json::object &node_as_object = dynamic_cast<json::object &>(*node.get());
 
+        const token *next_tok_ptr = m_token_cit.peek_unsafe();
+        const auto *next_tok_ptr_as_punct = token_as<token_punct>(next_tok_ptr);
+        if (next_tok_ptr_as_punct && next_tok_ptr_as_punct->value() == '}') {
+            ++m_token_cit;
+            return node;
+        }
+
         for (;;) {
             json::string key_as_str = [&]() {
                 json::pmrvalue key = parse_value();
@@ -158,6 +165,14 @@ private:
 
         json::pmrvalue node = json::make_node<json::array>();
         json::array &node_as_array = dynamic_cast<json::array &>(*node.get());
+
+        const token *next_tok_ptr = m_token_cit.peek_unsafe();
+        const auto *next_tok_ptr_as_punct = token_as<token_punct>(next_tok_ptr);
+        if (next_tok_ptr_as_punct && next_tok_ptr_as_punct->value() == ']') {
+            ++m_token_cit;
+            return node;
+        }
+
         for (;;) {
             node_as_array.append(parse_value());
             mystd::unique_ptr<token> delimiter = expect_token<token_punct>();
@@ -235,7 +250,7 @@ private:
 
     template <typename TokenKind>
     mystd::unique_ptr<token> expect_token() {
-        expect_has_more();
+//        expect_has_more();
         mystd::unique_ptr<token> next_token = *m_token_cit++;
         if (!token_as<TokenKind>(next_token))
             throw parser_exception_here(std::string("Expected token of type `") + typeid(TokenKind).name() + "` but no such was found.");

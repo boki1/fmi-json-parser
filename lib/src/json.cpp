@@ -63,6 +63,16 @@ json::value *json::follow_impl(const path &path) const {
     return follow_impl(path);
 }
 ///
+/// Other operations
+///
+
+[[nodiscard]] json::pmrvalue json::take() {
+    auto root_node = std::move(m_root_node);
+    m_root_node.reset();
+    return root_node;
+}
+
+///
 /// Special member functions
 ///
 

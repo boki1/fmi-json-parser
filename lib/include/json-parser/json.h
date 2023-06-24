@@ -383,6 +383,15 @@ public:
             m_data.emplace(mystd::forward<ItemType>(item_args)...);
         }
 
+        [[nodiscard]] bool contains(const json::string &key) {
+            return m_data.contains(key);
+        }
+
+        void try_remove(const json::string &key) {
+            if (m_data.erase(key) == 0)
+                throw json_exception("Cannot remove key-value that does not exist from JSON object.");
+        }
+
         json::pmrvalue clone() const override {
             auto cloned = mystd::make_unique<object>();
             for (const auto &[key, val] : m_data){
@@ -433,6 +442,21 @@ public:
         template <typename ...ItemType>
         void append(ItemType&& ...item_args) {
             m_data.emplace_back(mystd::forward<ItemType>(item_args)...);
+        }
+
+        [[nodiscard]] bool contains(const json::value &key) {
+            return mystd::find_if(m_data.cbegin(), m_data.cend(), [&key](const auto &el) {
+                       return *el == key;
+                   }) != m_data.cend();
+        }
+
+        void try_remove(const json::value &key) {
+            const auto it = mystd::find_if(m_data.cbegin(), m_data.cend(), [&key](const auto &el) {
+                return *el == key;
+            });
+            if (it == m_data.cend())
+                throw json_exception("Cannot remove element that does not exist from JSON array.");
+            m_data.erase(it);
         }
 
         json::pmrvalue clone() const override {
@@ -523,6 +547,7 @@ public:
 
     void dump(std::ostream &os) const;
 
+    [[nodiscard]] json::pmrvalue take();
     ///
     /// Produces a new JSON object which contains only those value that meet
     /// the provided criterium. As "mapped" are considered the JSON values
@@ -613,7 +638,7 @@ public:
     }
 
     [[nodiscard]] bool empty() const noexcept {
-        return (bool) m_root_node;
+        return !(bool) m_root_node;
     }
 
 private:

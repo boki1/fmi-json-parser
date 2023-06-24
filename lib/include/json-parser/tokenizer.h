@@ -404,8 +404,11 @@ private:
                    || sym == 'e' || sym == 'E';
         };
 
-        for (char sym = peek(); valid_in_number(sym); sym = peek())
+        for (char sym = peek(); valid_in_number(sym); sym = peek()){
             value += get();
+            if (!has_more())
+                break;
+        }
 
         return make_token<token_number>(std::atof(value.c_str()));
     }

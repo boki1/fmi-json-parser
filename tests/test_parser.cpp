@@ -125,6 +125,26 @@ TEST(JsonTests, ParseNestedStrInputReader) {
     EXPECT_EQ(std::string { q2_option_2 }, "3");
 }
 
+TEST(JsonTests, ParseSingleNumber) {
+    const json parsed = json_parser::str_parser{json_parser::str_input_reader{"1"}}();
+    const json::number &num = dynamic_cast<const json::number &>(parsed.root_unsafe());
+
+    EXPECT_TRUE(parsed.trivial());
+    EXPECT_EQ(num, 1);
+}
+
+TEST(JsonTests, ParseEmptyObjectAndArray) {
+    auto parsed_array = json_parser::str_parser{json_parser::str_input_reader{"[]"}}();
+    EXPECT_TRUE(parsed_array.compound());
+    const auto &array = dynamic_cast<const json::array &>(parsed_array.root_unsafe());
+    EXPECT_TRUE(array.empty());
+
+    auto parsed_object = json_parser::str_parser{json_parser::str_input_reader{"{}"}}();
+    EXPECT_TRUE(parsed_object.compound());
+    const auto &object = dynamic_cast<const json::object &>(parsed_object.root_unsafe());
+    EXPECT_TRUE(object.empty());
+}
+
 ///
 /// Bad ones - try parsing unsound JSON and report it.
 ///
