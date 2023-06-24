@@ -299,9 +299,9 @@ bool set_cmd(editor &ed) {
         return false;
     auto &path = *maybe_path;
 
-    json_parser::json::value *node{nullptr};
+    json_parser::json::pmrvalue *node{nullptr};
     try {
-        node = ed.draft().follow(path);
+        node = &ed.draft().follow(path);
     } catch (const json_parser::json_exception &je) {
         ed.out() << "Invalid path used - it does not exist.\n";
         return false;
@@ -311,7 +311,7 @@ bool set_cmd(editor &ed) {
     assert(node != nullptr);
 
     ed.out() << "Looking at:\n";
-    node->serialize(ed.out(), /* depth */ 0);
+    (*node)->serialize(ed.out(), /* depth */ 0);
     ed.out() << '\n';
 
     ed.out() << "Enter the new node: ";
@@ -322,8 +322,7 @@ bool set_cmd(editor &ed) {
         return false;
     }
 
-    *node = mystd::move(*new_node);
-
+    node->swap(new_node);
     return false;
 }
 
@@ -380,6 +379,9 @@ static void create_array_element(editor &ed, json::array &node) {
 }
 
 bool create_cmd(editor &ed) {
+    json_parser::json::pmrvalue *pmrnode = follow_path_subcmd(ed);
+    json_parser::json::value *node = pmrnode->get();
+    if (!node)
     if (!ed.active()) {
         ed.out() << "No file is opened.\n";
         return false;

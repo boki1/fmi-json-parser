@@ -596,13 +596,16 @@ public:
 
         return json{std::move(result_root_node)};
     }
+
+    /// Category 3):
+
+    template <std::invocable Func>
+    std::vector<json::value *> contains_one_that(Func criterium);
+
     using path = std::vector<json::pmrvalue>;
 
-    [[nodiscard]] json::value *follow(const path &);
-    [[nodiscard]] const json::value *follow(const path &) const;
-
-private:
-    json::value *follow_impl(const path &) const;
+    [[nodiscard]] pmrvalue &follow(const path &);
+    [[nodiscard]] const json::pmrvalue &follow(const path &) const;
 
 public:
     ///

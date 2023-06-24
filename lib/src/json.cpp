@@ -8,22 +8,22 @@ namespace json_parser {
 /// Following paths
 ///
 
-json::value *json::follow_impl(const path &path) const {
-    json::value *node_ptr = m_root_node.get();
+[[nodiscard]] json::pmrvalue &json::follow(const path &path) {
+    json::pmrvalue *node_ptr = &m_root_node;
     for (const auto &component: path) {
-        if (node_ptr == nullptr || node_ptr->trivial())
+        if (node_ptr == nullptr || (*node_ptr)->trivial())
             throw json_exception("Cannot follow given path, because it does not exist.");
 
         // Safety: We just verified that it is not a trivial node, so if it is valid
         // then its only possibility is to be a compound.
-        assert(node_ptr->compound());
+        assert((*node_ptr)->compound());
 
-        if (auto *node_as_object = dynamic_cast<json::object *>(node_ptr); node_as_object) {
+        if (auto *node_as_object = dynamic_cast<json::object *>(node_ptr->get()); node_as_object) {
             const json::string *component_as_str = dynamic_cast<json::string *>(component.get());
             if (!component_as_str)
                 throw json_exception("JSON objects are indexed only when the key is an instance of json::string.");
             try {
-                node_ptr = &(*node_as_object)[*component_as_str];
+                node_ptr = &node_as_object->m_data.at(*component_as_str);
             } catch (const std::out_of_range &oor) {
                 throw json_exception("Trying to index JSON object with non-existent key.");
             }
@@ -31,7 +31,7 @@ json::value *json::follow_impl(const path &path) const {
             continue;
         }
 
-        if (auto *node_as_array = dynamic_cast<json::array *>(node_ptr); node_as_array) {
+        if (auto *node_as_array = dynamic_cast<json::array *>(node_ptr->get()); node_as_array) {
             static const std::string int_error_msg = "JSON objects are indexed only when the key is an integral.";
             const json::number *component_as_num = dynamic_cast<json::number *>(component.get());
             if (!component_as_num)
@@ -42,7 +42,7 @@ json::value *json::follow_impl(const path &path) const {
             if ((double) index != num)
                 throw json_exception(int_error_msg);
             try {
-                node_ptr = &(*node_as_array)[index];
+                node_ptr = &node_as_array->m_data.at(index);
             } catch (const std::out_of_range &oor) {
                 throw json_exception("Trying to index JSON object with index that is out of bounds.");
             }
@@ -52,7 +52,55 @@ json::value *json::follow_impl(const path &path) const {
         mystd::unreachable();
     }
 
-    return node_ptr;
+    return *node_ptr;
+}
+
+[[nodiscard]] const json::pmrvalue &json::follow(const path &path) const {
+    const json::pmrvalue *node_ptr = &m_root_node;
+    for (const auto &component: path) {
+        if (node_ptr == nullptr || (*node_ptr)->trivial())
+            throw json_exception("Cannot follow given path, because it does not exist.");
+
+        // Safety: We just verified that it is not a trivial node, so if it is valid
+        // then its only possibility is to be a compound.
+        assert((*node_ptr)->compound());
+
+        if (auto *node_as_object = dynamic_cast<json::object *>(node_ptr->get()); node_as_object) {
+            const json::string *component_as_str = dynamic_cast<json::string *>(component.get());
+            if (!component_as_str)
+                throw json_exception("JSON objects are indexed only when the key is an instance of json::string.");
+            try {
+                node_ptr = &node_as_object->m_data.at(*component_as_str);
+            } catch (const std::out_of_range &oor) {
+                throw json_exception("Trying to index JSON object with non-existent key.");
+            }
+
+            continue;
+        }
+
+        if (auto *node_as_array = dynamic_cast<json::array *>(node_ptr->get()); node_as_array) {
+            static const std::string int_error_msg = "JSON objects are indexed only when the key is an integral.";
+            const json::number *component_as_num = dynamic_cast<json::number *>(component.get());
+            if (!component_as_num)
+                throw json_exception(int_error_msg);
+
+            const double num = (double) *component_as_num;
+            const std::size_t index = static_cast<std::size_t>(num);
+            if ((double) index != num)
+                throw json_exception(int_error_msg);
+            try {
+                node_ptr = &node_as_array->m_data.at(index);
+            } catch (const std::out_of_range &oor) {
+                throw json_exception("Trying to index JSON object with index that is out of bounds.");
+            }
+            continue;
+        }
+
+        mystd::unreachable();
+    }
+
+    return *node_ptr;
+}
 }
 
 [[nodiscard]] json::value *json::follow(const path &path) {
