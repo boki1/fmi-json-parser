@@ -185,6 +185,29 @@ static void with_new_array_element(editor &ed, Func action) {
     action(mystd::move(key));
 }
 
+json_parser::json::pmrvalue *follow_path_subcmd(editor &ed, std::string path_prompt = "path") {
+    if (!ed.active()) {
+        ed.out() << "No file is opened.\n";
+        return nullptr;
+    }
+
+    auto maybe_path = read_path(ed, path_prompt);
+    if (!maybe_path)
+        return nullptr;
+    auto &path = *maybe_path;
+
+    try {
+        json_parser::json::pmrvalue &node = ed.draft().follow(path);
+        ed.out() << "Looking at:\n";
+        node->serialize(ed.out(), /* depth */ 0);
+        ed.out() << '\n';
+        return &node;
+    } catch (const json_parser::json_exception &je) {
+        ed.out() << "Invalid path used - it does not exist.\n";
+        return nullptr;
+    }
+}
+
 ///
 /// Commands implementation
 ///
@@ -326,86 +349,12 @@ bool set_cmd(editor &ed) {
     return false;
 }
 
-static void create_object_element(editor &ed, json::object &node) {
-    ed.out() << "Enter key: ";
-    std::string key_str = read_string_from(ed.in());
-    json_parser::json::pmrvalue key = string_to_trivial_json(key_str);
-    if (!key) {
-        ed.out() << "Invalid new node - it has to be a valid JSON trivial type.\n";
-        return;
-    }
-    auto *key_as_str = dynamic_cast<json_parser::json::string *>(key.get());
-    if (!key_as_str) {
-        ed.out() << "Error: Expecting json::string as key.\n";
-        return;
-    }
-
-    ed.out() << "Enter mapped:\n";
-    std::string mapped_str = read_snippet_from(ed.in());
-    json_parser::json::pmrvalue mapped;
-    try {
-        json_parser::json parsed = json_parser::str_parser{json_parser::str_input_reader{mapped_str}}();
-        mapped = parsed.take();
-    } catch (const json_parser::parser_exception &pe) {
-        ed.out() << "Error: " + std::string(pe.what()) << '\n';
-        return;
-    }
-
-    if (node.contains(*key_as_str)) {
-        ed.out() << "Error: This key already exists.\n";
-        return;
-    }
-
-    node.append(*key_as_str, mystd::move(mapped));
-}
-
-static void create_array_element(editor &ed, json::array &node) {
-    ed.out() << "Enter key: ";
-    json_parser::json::pmrvalue key;
-    try {
-        std::string key_as_str = read_snippet_from(ed.in());
-        json_parser::json parsed = json_parser::str_parser{json_parser::str_input_reader{key_as_str}}();
-        key = parsed.take();
-    } catch (const json_parser::parser_exception &pe) {
-        ed.out() << "Error: " + std::string(pe.what()) << '\n';
-    }
-
-    if (node.contains(*key)) {
-        ed.out() << "Error: This key already exists.\n";
-        return;
-    }
-
-    node.append(mystd::move(key));
-}
 
 bool create_cmd(editor &ed) {
     json_parser::json::pmrvalue *pmrnode = follow_path_subcmd(ed);
     json_parser::json::value *node = pmrnode->get();
     if (!node)
-    if (!ed.active()) {
-        ed.out() << "No file is opened.\n";
         return false;
-    }
-
-    auto maybe_path = read_path(ed);
-    if (!maybe_path)
-        return false;
-    auto &path = *maybe_path;
-
-    json_parser::json::value *node{nullptr};
-    try {
-        node = ed.draft().follow(path);
-    } catch (const json_parser::json_exception &je) {
-        ed.out() << "Invalid path used - it does not exist.\n";
-        return false;
-    }
-
-    // Safety: follow either throws an error or returns a valid ptr to a JSON node.
-    assert(node != nullptr);
-
-    ed.out() << "Looking at:\n";
-    node->serialize(ed.out(), /* depth */ 0);
-    ed.out() << '\n';
 
     if (node->trivial()) {
         ed.out() << "Cannot add elements to a trivial JSON type.\n";
