@@ -281,9 +281,6 @@ public:
 
         json::pmrvalue clone() const override { return mystd::make_unique<string>(*this); }
 
-        const value *find(const trivial_value &target) const override;
-        value *find(const trivial_value &target) override;
-
     public:
         /// json::string has to be hashable, because it is the key type of
         /// `json::object`'s inner map container.
