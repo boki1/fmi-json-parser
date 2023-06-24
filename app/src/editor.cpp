@@ -384,11 +384,39 @@ bool create_cmd(editor &ed) {
     return false;
 }
 
-bool delete_cmd(editor &) {
+bool delete_cmd(editor &ed) {
+    json_parser::json::pmrvalue *pmrnode = follow_path_subcmd(ed);
+    json_parser::json::value *node = pmrnode->get();
+
+    using enum with_object;
+    if (auto *node_as_object = dynamic_cast<json::object *>(node); node_as_object)
+        with_new_object_element<KeyOnly>(ed, [&](auto &&key) {
+            try {
+                node_as_object->try_remove(mystd::forward<decltype(key)>(key));
+            } catch (const json_parser::json_exception &je) {
+                ed.out() << "Error: " + std::string{je.what()} << '\n';
+            }
+        });
+    else if (auto *node_as_array = dynamic_cast<json::array *>(node); node_as_array)
+        with_new_array_element(ed, [&](auto &&key) {
+            try {
+                node_as_array->try_remove(mystd::forward<decltype(*key)>(*key));
+            } catch (const json_parser::json_exception &je) {
+                ed.out() << "Error: " + std::string{je.what()} << '\n';
+            }
+        });
+
     return false;
 }
 
-bool move_cmd(editor &) {
+bool move_cmd(editor &ed) {
+    json_parser::json::pmrvalue *dest_node = follow_path_subcmd(ed, "source path");
+    if (!dest_node)
+        return false;
+    json_parser::json::pmrvalue *src_node = follow_path_subcmd(ed, "dest path");
+    if (!src_node)
+        return false;
+    dest_node->swap(*src_node);
     return false;
 }
 
