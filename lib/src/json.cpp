@@ -101,15 +101,7 @@ namespace json_parser {
 
     return *node_ptr;
 }
-}
 
-[[nodiscard]] json::value *json::follow(const path &path) {
-    return follow_impl(path);
-}
-
-[[nodiscard]] const json::value *json::follow(const path &path) const {
-    return follow_impl(path);
-}
 ///
 /// Other operations
 ///
