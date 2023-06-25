@@ -8,7 +8,7 @@
 // Always
 namespace mystd {
 
-[[noreturn]] inline void unreachable() {
+inline void unreachable() {
 	assert(0);
 }
 
