@@ -291,7 +291,7 @@ public:
         try : m_input_reader { rhs.m_input_reader }
         , m_current_location { rhs.m_current_location }
         , m_consumed_first { rhs.m_consumed_first }
-        , m_consumed { rhs.m_consumed->clone() }
+        , m_consumed { rhs.m_consumed ? rhs.m_consumed->clone() : nullptr }
     {
         // Safety: This isguaranteed by the input reader strategies ctors.
         assert(m_input_reader.ready());
@@ -303,7 +303,7 @@ public:
     {
         m_input_reader = rhs.m_input_reader;
         m_consumed_first = rhs.m_consumed_first;
-        m_consumed = rhs.m_consumed->clone();
+        m_consumed = rhs.m_consumed ? rhs.m_consumed->clone() : nullptr ;
         m_current_location = rhs.m_current_location;
         return *this;
     }
