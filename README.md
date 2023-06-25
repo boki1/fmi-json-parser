@@ -15,6 +15,9 @@ Check the `mystd/` directory for them.
 
 [_Problem description in bulgarian._](https://docs.google.com/document/d/1yGwTjf8gskWtwMzavdfM4g3cZAkf-ZNiJQaht1i083o/edit#heading=h.vros15jkdqoa)
 
+[![build-and-tests](https://github.com/boki1/fmi-json-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/boki1/fmi-json-parser/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Building the source code**
 
 ```bash
