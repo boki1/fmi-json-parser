@@ -23,8 +23,8 @@ function(add_unit_test name file_path)
     target_include_directories(${target} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../lib/include)
     gtest_discover_tests(${target})
-    add_test(NAME ${target}
-            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/${target})
+    add_test(NAME ${name}
+            COMMAND ${target})
 endfunction()
 
 add_unit_test(it_works test_it_works.cpp)
