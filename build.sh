@@ -22,6 +22,11 @@ function build_procedure() {
 	find ${tests_dir} -name 'test_*' -type f -executable -exec '{}' ';'
 }
 
+function build_docs() {
+	make -C docs/ clean
+	make -C docs/
+}
+
 function clean() {
 	question=$([ ${should_ask} == "yes" ] && echo "-i" || echo "")
 	rm -rf ${question} ${output_dir}
@@ -52,6 +57,11 @@ function parse_arguments() {
 			shift
 			[[ "$1" == "--ask" ]] && should_ask="yes"
 			clean
+			;;
+		--docs)
+			shift
+			build_docs
+			[[ "$1" == "open" ]] && xdg-open docs/doc.pdf
 			;;
 		*)
 			echo "$0: Invalid input."

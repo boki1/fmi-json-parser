@@ -15,10 +15,16 @@ Check the `mystd/` directory for them.
 
 [_Problem description in bulgarian._](https://docs.google.com/document/d/1yGwTjf8gskWtwMzavdfM4g3cZAkf-ZNiJQaht1i083o/edit#heading=h.vros15jkdqoa)
 
-**Building**
+**Building the source code**
 
 ```bash
 $ ./build.sh --output=cmake-build-debug
+```
+
+**Building the documentation**
+
+```bash
+$ ./build.sh --docs open
 ```
 
 **License**
