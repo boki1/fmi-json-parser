@@ -12,7 +12,7 @@
 namespace json_editor {
 
 class editor {
-    static constexpr inline std::string prompt = "> ";
+    static const inline std::string prompt = "> ";
 
 public:
     editor(const std::string &greeting, std::ostream &os = std::cout, std::istream &is = std::cin)
