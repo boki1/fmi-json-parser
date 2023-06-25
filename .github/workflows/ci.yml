@@ -1,4 +1,5 @@
-name: ci
+name: build-and-tests
+
 on:
   push:
     branches:
@@ -14,31 +15,27 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-20.04]
-        cxx: [g++-11, clang++]
-        cc: [gcc-11, clang]
+        os: [ubuntu-22.04]
+        cxx: [g++-12]
+        cc: [gcc-12]
 
     steps:
       - uses: actions/checkout@v2
       - name: Setup dependencies
         run: |
              sudo apt update
-			 pip install -Iv conan==1.60.1
-             sudo apt install gcc-11 g++-11 clang++ clang
-
-      - name: Configure CMake
-        env:
-          CXX: ${{ matrix.cxx }}
-        shell: bash
-        working-directory: ${{github.workspace}}
-        run: cmake -S. -DFMI_JSON_PARSER_BUILD_TESTS=ON -DFMI_JSON_PARSER_BUILD_APP=ON -DFMI_JSON_PARSER_BUILD_WITH_MYSTD=ON
+             sudo apt install gcc-12 g++-12 ninja-build
+             pip3 install --force-reinstall -v "conan==1.60.1"
+             
+      - name: Configure
+        run: cmake . -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
 
       - name: Build
         working-directory: ${{github.workspace}}
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE
+        run: cmake --build .
 
       - name: Test
         working-directory: ${{github.workspace}}
         shell: bash
-        run: ctest -C $BUILD_TYPE --no-tests=error
+        run: ctest
